@@ -1,22 +1,17 @@
 package com.example.wuwaweather
 
-import android.graphics.ImageDecoder
-import android.graphics.drawable.AnimatedImageDrawable
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.SearchView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
-import com.example.wuwaweather.R.drawable.sunnylong
 import com.example.wuwaweather.databinding.ActivityMainBinding
 import retrofit2.Callback
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -79,6 +74,8 @@ class MainActivity : AppCompatActivity() {
                     val condition = responseBody.weather.firstOrNull()?.main?: "unknown"
                     val maxTemp = responseBody.main.temp_max
                     val minTemp = responseBody.main.temp_min
+                    val calendar = Calendar.getInstance()
+                    val currentTime = calendar.time
 
                     binding.temp.text = "$temperature °C"
                     binding.weather.text = condition
@@ -100,21 +97,38 @@ class MainActivity : AppCompatActivity() {
             }
 
             private fun changeImageAccordingToWeatherCondition(conditions: String) {
+
                 val backgroundImageView: ImageView = binding.root.findViewById(R.id.backgroundImageView)
+                val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                val isNight = currentHour >= 18 || currentHour < 6 // 6 PM to 6 AM is considered night
+
                 when(conditions){
                     "Clear Sky", "Sunny", "Clear" -> {
                       //  binding.root.setBackgroundResource(sunnylong)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.sunnylong).into(backgroundImageView)
-                        binding.lottieAnimationView.setAnimation(R.raw.sun)
+                        if(isNight){
+                            Glide.with(this@MainActivity).asGif().load(R.drawable.night_sky).into(backgroundImageView)
+                            binding.lottieAnimationView.setAnimation(R.raw.moon)
+                        }else {
+                            Glide.with(this@MainActivity).asGif().load(R.drawable.sunnylong)
+                                .into(backgroundImageView)
+                            binding.lottieAnimationView.setAnimation(R.raw.sun)
+                        }
                     }
                     "Partly Clouds", "Clouds", "Overcast", "Mist", "Foggy" -> {
                        // binding.root.setBackgroundResource(R.drawable.cloudy_medium)
                         Glide.with(this@MainActivity).asGif().load(R.drawable.cloudy_medium).into(backgroundImageView)
                         binding.lottieAnimationView.setAnimation(R.raw.cloud)
                     }
-                    "Light Rain", "Rain", "Drizzle", "Moderate Rain", "Showers", "Heavy Rain" -> {
+                    "Light Rain", "Drizzle" -> {
+                        // binding.root.setBackgroundResource(R.drawable.rainy2)
+                        Glide.with(this@MainActivity).asGif().load(R.drawable.rain_medium)
+                            .into(backgroundImageView)
+                        binding.lottieAnimationView.setAnimation(R.raw.rain)
+                    }
+
+                    "Rain","Moderate Rain", "Showers", "Heavy Rain" -> {
                        // binding.root.setBackgroundResource(R.drawable.rainy2)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.rain_medium).into(backgroundImageView)
+                        Glide.with(this@MainActivity).asGif().load(R.drawable.rain_heavy).into(backgroundImageView)
                         binding.lottieAnimationView.setAnimation(R.raw.rain)
                     }
                     "Thunderstorm" -> {
@@ -126,10 +140,15 @@ class MainActivity : AppCompatActivity() {
                         Glide.with(this@MainActivity).asGif().load(R.drawable.snow_medium).into(backgroundImageView)
                         binding.lottieAnimationView.setAnimation(R.raw.snow)
                     }
+
                     else -> {
-                      //  binding.root.setBackgroundResource(sunnylong)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.sunnylong).into(backgroundImageView)
-                        binding.lottieAnimationView.setAnimation(R.raw.sun)
+                        if (isNight) {
+                            Glide.with(this@MainActivity).asGif().load(R.drawable.night_sky).into(backgroundImageView)
+                            binding.lottieAnimationView.setAnimation(R.raw.moon)
+                        } else {
+                            Glide.with(this@MainActivity).asGif().load(R.drawable.sunnylong).into(backgroundImageView)
+                            binding.lottieAnimationView.setAnimation(R.raw.sun)
+                        }
                     }
                 }
                 binding.lottieAnimationView.playAnimation()
