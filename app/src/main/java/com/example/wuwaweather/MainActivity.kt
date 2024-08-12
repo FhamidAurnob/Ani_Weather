@@ -114,8 +114,12 @@ class MainActivity : AppCompatActivity() {
                     }
                     "Light Rain", "Rain", "Drizzle", "Moderate Rain", "Showers", "Heavy Rain" -> {
                        // binding.root.setBackgroundResource(R.drawable.rainy2)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.rainy2).into(backgroundImageView)
+                        Glide.with(this@MainActivity).asGif().load(R.drawable.rain_medium).into(backgroundImageView)
                         binding.lottieAnimationView.setAnimation(R.raw.rain)
+                    }
+                    "Thunderstorm" -> {
+                        Glide.with(this@MainActivity).asGif().load(R.drawable.thunderstorm).into(backgroundImageView)
+                        binding.lottieAnimationView.setAnimation(R.raw.thunder)
                     }
                     "Light Snow", "Moderate Snow", "Heavy Snow", "Blizzard" -> {
                        // binding.root.setBackgroundResource(R.drawable.snow_medium)
