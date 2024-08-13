@@ -100,6 +100,7 @@ class MainActivity : AppCompatActivity() {
 
                 val backgroundImageView: ImageView = binding.root.findViewById(R.id.backgroundImageView)
                 val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                val isDay = currentHour >= 6 || currentHour < 18 // 6 AM to 6 PM is considered day
                 val isNight = currentHour >= 18 || currentHour < 6 // 6 PM to 6 AM is considered night
 
                 when(conditions){
@@ -115,30 +116,54 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     "Partly Clouds", "Clouds", "Overcast", "Mist", "Foggy" -> {
-                       // binding.root.setBackgroundResource(R.drawable.cloudy_medium)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.cloudy_medium).into(backgroundImageView)
-                        binding.lottieAnimationView.setAnimation(R.raw.cloud)
+                       if(isDay) {
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.cloudy_medium)
+                               .into(backgroundImageView)
+                           binding.lottieAnimationView.setAnimation(R.raw.cloud)
+                       }else {
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.night_cloud)
+                               .into(backgroundImageView)
+                           binding.lottieAnimationView.setAnimation(R.raw.cloud)
+                       }
                     }
                     "Light Rain", "Drizzle" -> {
-                        // binding.root.setBackgroundResource(R.drawable.rainy2)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.rain_medium)
-                            .into(backgroundImageView)
-                        binding.lottieAnimationView.setAnimation(R.raw.rain)
+                        if(isDay) {
+                            Glide.with(this@MainActivity).asGif().load(R.drawable.rain_medium)
+                                .into(backgroundImageView)
+                            binding.lottieAnimationView.setAnimation(R.raw.rain)
+                        }else {
+                            Glide.with(this@MainActivity).asGif().load(R.drawable.rainy2)
+                                .into(backgroundImageView)
+                            binding.lottieAnimationView.setAnimation(R.raw.rain)
+                        }
                     }
 
                     "Rain","Moderate Rain", "Showers", "Heavy Rain" -> {
-                       // binding.root.setBackgroundResource(R.drawable.rainy2)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.rain_heavy).into(backgroundImageView)
-                        binding.lottieAnimationView.setAnimation(R.raw.rain)
+                       if(isNight) {
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.rain_heavy)
+                               .into(backgroundImageView)
+                           binding.lottieAnimationView.setAnimation(R.raw.rain)
+                       }else {
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.raining)
+                               .into(backgroundImageView)
+                           binding.lottieAnimationView.setAnimation(R.raw.rain)
+                       }
                     }
+
                     "Thunderstorm" -> {
                         Glide.with(this@MainActivity).asGif().load(R.drawable.thunderstorm).into(backgroundImageView)
                         binding.lottieAnimationView.setAnimation(R.raw.thunder)
                     }
                     "Light Snow", "Moderate Snow", "Heavy Snow", "Blizzard" -> {
-                       // binding.root.setBackgroundResource(R.drawable.snow_medium)
-                        Glide.with(this@MainActivity).asGif().load(R.drawable.snow_medium).into(backgroundImageView)
-                        binding.lottieAnimationView.setAnimation(R.raw.snow)
+                       if(isDay) {
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.snow_medium)
+                               .into(backgroundImageView)
+                           binding.lottieAnimationView.setAnimation(R.raw.snow)
+                       }else{
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.snow_night)
+                               .into(backgroundImageView)
+                           binding.lottieAnimationView.setAnimation(R.raw.snow)
+                       }
                     }
 
                     else -> {
