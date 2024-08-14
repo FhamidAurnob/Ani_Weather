@@ -1,10 +1,14 @@
 package com.example.wuwaweather
 
+
+import android.graphics.Color
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.SearchView
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.toColor
 import com.bumptech.glide.Glide
 import com.example.wuwaweather.databinding.ActivityMainBinding
 import retrofit2.Callback
@@ -27,17 +31,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
-       val imageView = findViewById<ImageView>(R.id.imageView)
 
         fetchWeatherData("Dhaka")
         SearchCity()
 
-        /*val source : ImageDecoder.Source = ImageDecoder.createSource(
-            resources, R.drawable.sunnylong)
-        val imageView : ImageView = findViewById<ImageView>(R.id.imageView)
-        imageView.setImageDrawable(drawable)
-
-        (drawable as? AnimatedImageDrawable)?.start()*/
         }
 
     private fun SearchCity() {
@@ -98,18 +95,47 @@ class MainActivity : AppCompatActivity() {
 
             private fun changeImageAccordingToWeatherCondition(conditions: String) {
 
+                val cityname = findViewById<TextView>(R.id.city)
+                val today = findViewById<TextView>(R.id.today)
+                val temp = findViewById<TextView>(R.id.temp)
+                val weather = findViewById<TextView>(R.id.weather)
+                val maxtemp = findViewById<TextView>(R.id.maxtemp)
+                val mintemp = findViewById<TextView>(R.id.mintemp)
+                val day = findViewById<TextView>(R.id.day)
+                val date = findViewById<TextView>(R.id.date)
+
                 val backgroundImageView: ImageView = binding.root.findViewById(R.id.backgroundImageView)
                 val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-                val isDay = currentHour >= 6 || currentHour < 18 // 6 AM to 6 PM is considered day
-                val isNight = currentHour >= 18 || currentHour < 6 // 6 PM to 6 AM is considered night
+                val isDay = currentHour in 6..18 // 6 AM to 6 PM is considered day
+                val isNight = currentHour > 18 || currentHour < 6 // 6 PM to 6 AM is considered night
+
+                // Change text color based on day or night
+                if (isNight) {
+                    cityname.setTextColor(Color.parseColor("#FFFFFF"))
+                    today.setTextColor(Color.parseColor("#FFFFFF"))
+                    temp.setTextColor(Color.parseColor("#FFFFFF"))
+                    weather.setTextColor(Color.parseColor("#FFFFFF"))
+                    maxtemp.setTextColor(Color.parseColor("#FFFFFF"))
+                    mintemp.setTextColor(Color.parseColor("#FFFFFF"))
+                    day.setTextColor(Color.parseColor("#FFFFFF"))
+                    date.setTextColor(Color.parseColor("#FFFFFF"))
+                } else{
+                    cityname.setTextColor(Color.parseColor("#000000"))
+                    today.setTextColor(Color.parseColor("#000000"))
+                    temp.setTextColor(Color.parseColor("#000000"))
+                    weather.setTextColor(Color.parseColor("#000000"))
+                    maxtemp.setTextColor(Color.parseColor("#000000"))
+                    mintemp.setTextColor(Color.parseColor("#000000"))
+                    day.setTextColor(Color.parseColor("#000000"))
+                    date.setTextColor(Color.parseColor("#000000"))
+                }
 
                 when(conditions){
                     "Clear Sky", "Sunny", "Clear" -> {
-                      //  binding.root.setBackgroundResource(sunnylong)
                         if(isNight){
                             Glide.with(this@MainActivity).asGif().load(R.drawable.night_sky).into(backgroundImageView)
                             binding.lottieAnimationView.setAnimation(R.raw.moon)
-                        }else {
+                        } else if(isDay) {
                             Glide.with(this@MainActivity).asGif().load(R.drawable.sunnylong)
                                 .into(backgroundImageView)
                             binding.lottieAnimationView.setAnimation(R.raw.sun)
@@ -120,7 +146,7 @@ class MainActivity : AppCompatActivity() {
                            Glide.with(this@MainActivity).asGif().load(R.drawable.cloudy_medium)
                                .into(backgroundImageView)
                            binding.lottieAnimationView.setAnimation(R.raw.cloud)
-                       }else {
+                       }else if(isNight) {
                            Glide.with(this@MainActivity).asGif().load(R.drawable.night_cloud)
                                .into(backgroundImageView)
                            binding.lottieAnimationView.setAnimation(R.raw.cloud)
@@ -131,7 +157,7 @@ class MainActivity : AppCompatActivity() {
                             Glide.with(this@MainActivity).asGif().load(R.drawable.rain_medium)
                                 .into(backgroundImageView)
                             binding.lottieAnimationView.setAnimation(R.raw.rain)
-                        }else {
+                        }else if(isNight) {
                             Glide.with(this@MainActivity).asGif().load(R.drawable.rainy2)
                                 .into(backgroundImageView)
                             binding.lottieAnimationView.setAnimation(R.raw.rain)
@@ -143,8 +169,8 @@ class MainActivity : AppCompatActivity() {
                            Glide.with(this@MainActivity).asGif().load(R.drawable.rain_heavy)
                                .into(backgroundImageView)
                            binding.lottieAnimationView.setAnimation(R.raw.rain)
-                       }else {
-                           Glide.with(this@MainActivity).asGif().load(R.drawable.raining)
+                       }else if(isDay) {
+                           Glide.with(this@MainActivity).asGif().load(R.drawable.rain_morning)
                                .into(backgroundImageView)
                            binding.lottieAnimationView.setAnimation(R.raw.rain)
                        }
@@ -159,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                            Glide.with(this@MainActivity).asGif().load(R.drawable.snow_medium)
                                .into(backgroundImageView)
                            binding.lottieAnimationView.setAnimation(R.raw.snow)
-                       }else{
+                       }else if(isNight){
                            Glide.with(this@MainActivity).asGif().load(R.drawable.snow_night)
                                .into(backgroundImageView)
                            binding.lottieAnimationView.setAnimation(R.raw.snow)
@@ -170,7 +196,7 @@ class MainActivity : AppCompatActivity() {
                         if (isNight) {
                             Glide.with(this@MainActivity).asGif().load(R.drawable.night_sky).into(backgroundImageView)
                             binding.lottieAnimationView.setAnimation(R.raw.moon)
-                        } else {
+                        } else if (isDay) {
                             Glide.with(this@MainActivity).asGif().load(R.drawable.sunnylong).into(backgroundImageView)
                             binding.lottieAnimationView.setAnimation(R.raw.sun)
                         }

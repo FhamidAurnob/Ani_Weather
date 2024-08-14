@@ -29,6 +29,7 @@
         android:background="@drawable/searchviewshape"
         android:iconifiedByDefault="false"
         android:queryHint="Search For A City"
+        android:textColor="@color/black"
         android:searchIcon="@drawable/search"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
