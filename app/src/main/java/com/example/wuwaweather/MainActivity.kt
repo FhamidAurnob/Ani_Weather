@@ -3,11 +3,13 @@ package com.example.wuwaweather
 
 import android.graphics.Color
 import android.os.Bundle
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.SearchView
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColor
 import com.bumptech.glide.Glide
 import com.example.wuwaweather.databinding.ActivityMainBinding
@@ -34,6 +36,7 @@ class MainActivity : AppCompatActivity() {
 
         fetchWeatherData("Dhaka")
         SearchCity()
+
 
         }
 
