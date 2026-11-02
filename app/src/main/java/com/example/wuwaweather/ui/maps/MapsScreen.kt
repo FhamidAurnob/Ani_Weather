@@ -178,11 +178,11 @@ private class MapPage(context: Context) {
         webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = false
             override fun onReceivedError(view: WebView, request: WebResourceRequest, err: WebResourceError) {
-                if (request.isForMainFrame) error = err.description?.toString() ?: "Error ${err.errorCode}"
+                if (request.isForMainFrame) this@MapPage.error = err.description?.toString() ?: "Error ${err.errorCode}"
             }
         }
         webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView, newProgress: Int) { progress = newProgress }
+            override fun onProgressChanged(view: WebView, newProgress: Int) { this@MapPage.progress = newProgress }
         }
     }
 
