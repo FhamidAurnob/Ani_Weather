@@ -1,8 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.WuWaWeather" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <!-- Velora is always dark/immersive; the Compose UI draws the sky. -->
+    <style name="Base.Theme.WuWaWeather" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@color/velora_night</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.WuWaWeather" parent="Base.Theme.WuWaWeather" />

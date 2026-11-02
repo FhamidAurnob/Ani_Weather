@@ -2,4 +2,6 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Velora brand -->
+    <color name="velora_night">#FF0A0F24</color>
 </resources>
