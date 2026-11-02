@@ -33,7 +33,7 @@ import com.example.wuwaweather.data.Condition
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun RealisticSky(condition: Condition, isDay: Boolean, modifier: Modifier = Modifier) {
+fun RealisticSky(condition: Condition, isDay: Boolean, modifier: Modifier = Modifier, playing: Boolean = true) {
     val context = LocalContext.current
     val video = videoFor(condition, isDay)
 
@@ -51,12 +51,15 @@ fun RealisticSky(condition: Condition, isDay: Boolean, modifier: Modifier = Modi
         player.prepare()
     }
 
+    // Pause while hidden (e.g. behind the Maps tab) or on battery saver
+    LaunchedEffect(playing) { if (playing) player.play() else player.pause() }
+
     // Pause when the app goes to the background, release when this screen leaves
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> player.play()
+                Lifecycle.Event.ON_START -> if (playing) player.play()
                 Lifecycle.Event.ON_STOP -> player.pause()
                 else -> Unit
             }

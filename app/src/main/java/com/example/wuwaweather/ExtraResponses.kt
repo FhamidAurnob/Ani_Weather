@@ -40,7 +40,8 @@ data class HourlyExtras(
     val precipitation: List<Double?>?,
     @SerializedName("precipitation_probability") val precipitationProbability: List<Int?>?,
     @SerializedName("weather_code") val weatherCode: List<Int?>?,
-    @SerializedName("wind_gusts_10m") val windGusts: List<Double?>?
+    @SerializedName("wind_gusts_10m") val windGusts: List<Double?>?,
+    @SerializedName("apparent_temperature") val apparentTemperature: List<Double?>?
 )
 
 data class UvDaily(@SerializedName("uv_index_max") val uvIndexMax: List<Double?>?)

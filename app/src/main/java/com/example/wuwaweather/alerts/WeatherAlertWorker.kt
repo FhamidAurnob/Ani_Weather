@@ -8,7 +8,9 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.example.wuwaweather.BuildConfig
 import com.example.wuwaweather.WeatherClient
+import com.example.wuwaweather.storms.CycloneRepository
 import com.example.wuwaweather.data.HomeStore
 import com.example.wuwaweather.data.NowcastAnalyzer
 import com.example.wuwaweather.data.SevereSignal
@@ -25,7 +27,7 @@ class WeatherAlertWorker(context: Context, params: WorkerParameters) : Coroutine
     override suspend fun doWork(): Result {
         val ctx = applicationContext
         val s = VeloraSettings.get(ctx)
-        if (!s.rainAlerts && !s.severeAlerts) return Result.success()
+        if (!s.rainAlerts && !s.severeAlerts && !s.healthAlerts && !s.cycloneAlerts) return Result.success()
         val home = HomeStore.get(ctx) ?: return Result.success()
 
         val res = runCatching { WeatherClient.openMeteo.getExtras(home.lat, home.lon).body() }.getOrNull()
@@ -72,6 +74,66 @@ class WeatherAlertWorker(context: Context, params: WorkerParameters) : Coroutine
                                 "${home.name}-এ ${hhmm(sig.atEpochSeconds)} নাগাদ ঘণ্টায় ${sig.value.roundToInt()} কিমি পর্যন্ত দমকা হাওয়া।".localDigits())
                     }
                     Notifications.show(ctx, Notifications.CH_WEATHER, 8100 + sig.kind.ordinal, title, text)
+                }
+            }
+        }
+        val localHour = java.time.Instant.ofEpochSecond(now).atOffset(java.time.ZoneOffset.ofTotalSeconds(home.tzOffsetSeconds)).hour
+        val dayKey = (now + home.tzOffsetSeconds) / 86_400
+
+        // Dangerous heat (feels-like) in the next 12 hours — once per day, during waking hours
+        if (s.healthAlerts && localHour in 7..20) {
+            val h = res.hourly
+            val times = h?.time.orEmpty()
+            val peak = times.indices
+                .filter { times[it] in now..(now + 12 * 3600) }
+                .mapNotNull { i -> h?.apparentTemperature?.getOrNull(i)?.let { times[i] to it } }
+                .maxByOrNull { it.second }
+            if (peak != null && peak.second >= 38.0) {
+                once("heat_$dayKey") {
+                    val severe = peak.second >= 41.0
+                    Notifications.show(
+                        ctx, Notifications.CH_WEATHER, 8300,
+                        if (severe) tr("Dangerous heat today", "আজ বিপজ্জনক গরম") else tr("Very hot today", "আজ অনেক গরম"),
+                        tr("Feels like ${peak.second.roundToInt()}° around ${hhmm(peak.first)}. Drink water often and avoid the midday sun.",
+                            "${hhmm(peak.first)} নাগাদ অনুভূত তাপমাত্রা ${peak.second.roundToInt()}°। বারবার পানি পান করুন, দুপুরের রোদ এড়িয়ে চলুন।").localDigits()
+                    )
+                }
+            }
+        }
+
+        // Poor air quality — once per day, during waking hours
+        if (s.healthAlerts && localHour in 7..20) {
+            val aqi = runCatching {
+                WeatherClient.api.getAirPollution(home.lat, home.lon, BuildConfig.OPENWEATHER_API_KEY).body()?.list?.firstOrNull()
+            }.getOrNull()
+            val index = aqi?.main?.aqi ?: 0
+            if (index >= 4) {
+                once("air_$dayKey") {
+                    Notifications.show(
+                        ctx, Notifications.CH_WEATHER, 8301,
+                        if (index >= 5) tr("Very poor air quality", "বায়ুর মান অত্যন্ত খারাপ") else tr("Poor air quality", "বায়ুর মান খারাপ"),
+                        (tr("In ${home.name}", "${home.name}-এ") + (aqi?.components?.pm25?.let { " · PM2.5 ${it.roundToInt()} µg/m³" } ?: "") +
+                            tr(". Wear a mask outside and keep windows closed.", "। বাইরে মাস্ক পরুন, জানালা বন্ধ রাখুন।")).localDigits()
+                    )
+                }
+            }
+        }
+
+        // Tropical cyclones nearby (GDACS)
+        if (s.cycloneAlerts) {
+            val cyclones = runCatching { CycloneRepository.active(home.lat, home.lon) }.getOrNull().orEmpty()
+            cyclones.filter { c ->
+                val d = c.distanceKm ?: return@filter false
+                d <= 800 || (d <= 1500 && c.alertLevel.lowercase() in setOf("orange", "red"))
+            }.forEach { c ->
+                once("cyclone_${c.id}_${c.alertLevel}") {
+                    Notifications.show(
+                        ctx, Notifications.CH_WEATHER, 8400 + (c.id % 50).toInt(),
+                        tr("Cyclone ${c.name} nearby", "ঘূর্ণিঝড় ${c.name} কাছাকাছি"),
+                        (tr("${c.alertLevel} alert · ${c.distanceKm!!.roundToInt()} km from ${home.name}", "${c.alertLevel} সতর্কতা · ${home.name} থেকে ${c.distanceKm.roundToInt()} কিমি") +
+                            (c.severity?.let { " · $it" } ?: "") +
+                            tr(". Follow official BMD signals.", "। আবহাওয়া অধিদপ্তরের সংকেত অনুসরণ করুন।")).localDigits()
+                    )
                 }
             }
         }

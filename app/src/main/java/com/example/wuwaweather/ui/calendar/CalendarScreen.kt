@@ -40,6 +40,8 @@ import com.example.wuwaweather.i18n.Text
 import com.example.wuwaweather.i18n.tr
 import com.example.wuwaweather.i18n.I18n
 import com.example.wuwaweather.calendar.Bangabda
+import com.example.wuwaweather.calendar.CalendarEvent
+import com.example.wuwaweather.calendar.Events
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
@@ -133,6 +135,24 @@ fun CalendarScreen(bottomPadding: Dp) {
         // Ramadan countdown / progress
         item(key = "ramadan") { RamadanCard(today, s.hijriOffset, todayHijri) }
 
+        // Islamic dates & holidays
+        item(key = "upcoming") {
+            val upcoming = remember(today, s.hijriOffset, s.language) { Events.upcoming(today, s.hijriOffset, 200).take(5) }
+            GlassCard(Modifier.fillMaxWidth(), title = tr("Upcoming dates", "আসন্ন দিনগুলো")) {
+                upcoming.forEach { e -> EventRow(e, today) { selected = e.date.toString(); month = YearMonth.from(e.date).toString() } }
+                Spacer(Modifier.height(6.dp))
+                SwitchRow(
+                    tr("Remind me on the day", "সেদিন মনে করিয়ে দিন"),
+                    tr("Islamic dates and holidays, at 9 AM", "ইসলামি দিন ও ছুটি, সকাল ৯টায়"),
+                    s.eventReminders
+                ) { on -> if (on) ensureNotifications(); update { it.copy(eventReminders = on) } }
+                Text(
+                    tr("Lunar dates are estimates until the moon is sighted.", "চাঁদ দেখার আগ পর্যন্ত চান্দ্র তারিখগুলো আনুমানিক।"),
+                    style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary
+                )
+            }
+        }
+
         // Suhur & Iftar
         item(key = "fasting") {
             GlassCard(Modifier.fillMaxWidth(), title = tr("Suhur & Iftar", "সাহরি ও ইফতার")) {
@@ -185,6 +205,7 @@ fun CalendarScreen(bottomPadding: Dp) {
                 selected = sel,
                 hijriOffset = s.hijriOffset,
                 noteDates = notes.orEmpty().map { it.date }.toSet(),
+                language = s.language,
                 onPrev = { month = ym.minusMonths(1).toString() },
                 onNext = { month = ym.plusMonths(1).toString() },
                 onSelect = { selected = it.toString() }
@@ -196,6 +217,7 @@ fun CalendarScreen(bottomPadding: Dp) {
             DayNotesCard(
                 date = sel,
                 hijri = runCatching { Hijri.of(sel, s.hijriOffset) }.getOrNull(),
+                events = remember(sel, s.hijriOffset, s.language) { Events.on(sel, s.hijriOffset) },
                 notes = notes.orEmpty().filter { it.date == selected }.sortedBy { it.id },
                 onAdd = { note ->
                     if (note.remindAt != null) ensureNotifications()
@@ -300,6 +322,7 @@ private fun MonthCard(
     selected: LocalDate,
     hijriOffset: Int,
     noteDates: Set<String>,
+    language: String,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onSelect: (LocalDate) -> Unit
@@ -308,12 +331,13 @@ private fun MonthCard(
     val first = ym.atDay(1)
     val lead = ((first.dayOfWeek.value - firstDow.value) + 7) % 7
     val gridStart = first.minusDays(lead.toLong())
-    val cells = remember(ym, hijriOffset, firstDow) {
+    val cells = remember(ym, hijriOffset, firstDow, language) {
         (0 until 42).map { i ->
             val d = gridStart.plusDays(i.toLong())
             d to runCatching { Hijri.of(d, hijriOffset) }.getOrNull()
         }
     }
+    val events = remember(ym, hijriOffset, language) { cells.associate { (d, _) -> d to Events.on(d, hijriOffset) } }
     val hFirst = cells.firstOrNull { it.first == first }?.second
     val hLast = cells.firstOrNull { it.first == ym.atEndOfMonth() }?.second
 
@@ -357,6 +381,7 @@ private fun MonthCard(
                         isToday = d == today,
                         isSelected = d == selected,
                         hasNotes = d.toString() in noteDates,
+                        dayEvents = events[d].orEmpty(),
                         modifier = Modifier.weight(1f),
                         onClick = { onSelect(d) }
                     )
@@ -374,9 +399,11 @@ private fun DayCell(
     isToday: Boolean,
     isSelected: Boolean,
     hasNotes: Boolean,
+    dayEvents: List<CalendarEvent>,
     modifier: Modifier,
     onClick: () -> Unit
 ) {
+    val holiday = dayEvents.any { it.isHoliday }
     val shape = RoundedCornerShape(14.dp)
     val ramadan = hijri?.isRamadan == true
     Box(
@@ -395,7 +422,11 @@ private fun DayCell(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        val base = if (isSelected) Color(0xFF1A1A1A) else Velora.TextPrimary
+        val base = when {
+            isSelected -> Color(0xFF1A1A1A)
+            holiday -> Color(0xFFFF8A80)    // public holidays in soft red
+            else -> Velora.TextPrimary
+        }
         val alpha = if (inMonth) 1f else 0.35f
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -409,10 +440,15 @@ private fun DayCell(
                 fontSize = 9.sp,
                 color = (if (isSelected) Color(0xFF1A1A1A) else Velora.Accent).copy(alpha = 0.8f * alpha)
             )
-            Box(
-                Modifier.size(4.dp).clip(CircleShape)
-                    .background(if (hasNotes) (if (isSelected) Color(0xFF1A1A1A) else Velora.Rain) else Color.Transparent)
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Box(
+                    Modifier.size(4.dp).clip(CircleShape)
+                        .background(if (hasNotes) (if (isSelected) Color(0xFF1A1A1A) else Velora.Rain) else Color.Transparent)
+                )
+                if (dayEvents.isNotEmpty()) {
+                    Box(Modifier.size(4.dp).clip(CircleShape).background(if (isSelected) Color(0xFF1A1A1A) else Velora.Accent))
+                }
+            }
         }
     }
 }
@@ -422,6 +458,7 @@ private fun DayCell(
 private fun DayNotesCard(
     date: LocalDate,
     hijri: HijriDate?,
+    events: List<CalendarEvent>,
     notes: List<Note>,
     onAdd: (Note) -> Unit,
     onToggleDone: (Note) -> Unit,
@@ -436,7 +473,15 @@ private fun DayNotesCard(
         Modifier.fillMaxWidth(),
         title = date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", I18n.locale)) + (hijri?.let { " · $it" } ?: "") + " · " + Bangabda.of(date)
     ) {
-        if (notes.isEmpty()) {
+        events.forEach { e ->
+            Text(
+                (if (e.isHoliday) "● " else "◦ ") + e.title + if (e.isHoliday) tr(" · holiday", " · ছুটি") else "",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (e.isHoliday) Color(0xFFFF8A80) else Velora.Accent
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        if (notes.isEmpty() && events.isEmpty()) {
             Text(tr("Nothing planned. Add a note or to-do below.", "কিছু পরিকল্পনা নেই। নিচে নোট বা করণীয় যোগ করুন।"), style = MaterialTheme.typography.bodyMedium, color = Velora.TextTertiary)
         }
         notes.forEach { n ->
@@ -540,4 +585,29 @@ private fun buildNote(date: LocalDate, text: String, isTodo: Boolean, remindMinu
         date.atTime(it / 60, it % 60).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
     return Note(id = System.currentTimeMillis(), date = date.toString(), text = text.trim(), isTodo = isTodo, remindAt = remindAt)
+}
+
+
+@Composable
+private fun EventRow(e: CalendarEvent, today: LocalDate, onClick: () -> Unit) {
+    val days = ChronoUnit.DAYS.between(today, e.date)
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 8.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(if (e.isHoliday) Color(0xFFFF8A80) else Velora.Accent))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(e.title, style = MaterialTheme.typography.bodyLarge, color = Velora.TextPrimary)
+            Text(e.date.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy", I18n.locale)), style = MaterialTheme.typography.labelSmall, color = Velora.TextSecondary)
+        }
+        Text(
+            when (days) {
+                0L -> tr("Today", "আজ")
+                1L -> tr("Tomorrow", "আগামীকাল")
+                else -> tr("in $days days", "$days দিন পর")
+            },
+            style = MaterialTheme.typography.labelLarge, color = Velora.TextSecondary
+        )
+    }
 }

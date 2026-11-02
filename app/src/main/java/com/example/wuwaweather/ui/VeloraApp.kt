@@ -96,6 +96,10 @@ fun VeloraApp(state: WeatherUiState, actions: WeatherActions) {
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val contentBottom = navBottom + 84.dp   // room for the tab bar
 
+    // Pause the sky while it's hidden behind a map, and on battery saver
+    val powerSave = rememberPowerSaveMode()
+    val skyActive = pager.currentPage != Tab.MAPS.ordinal && !powerSave
+
     // Sky follows the selected place; while it loads, borrow any place that has data
     val sky = state.current?.bundle?.current ?: state.pages.firstNotNullOfOrNull { it.bundle?.current }
     val condition = sky?.condition ?: Condition.CLEAR
@@ -104,8 +108,8 @@ fun VeloraApp(state: WeatherUiState, actions: WeatherActions) {
     Box(Modifier.fillMaxSize().background(Color(0xFF0A0F24))) {
         Crossfade(targetState = state.backgroundMode, animationSpec = tween(700), label = "skyMode") { mode ->
             when (mode) {
-                BackgroundMode.LIVE -> LiveSky(condition, isDay)
-                BackgroundMode.REALISTIC -> RealisticSky(condition, isDay)
+                BackgroundMode.LIVE -> LiveSky(condition, isDay, animate = skyActive)
+                BackgroundMode.REALISTIC -> RealisticSky(condition, isDay, playing = skyActive)
             }
         }
 
@@ -236,4 +240,24 @@ fun FeatureScreen(
         }
         content()
     }
+}
+
+
+/** True while Android's battery saver is on; updates live. */
+@Composable
+private fun rememberPowerSaveMode(): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pm = remember { context.getSystemService(android.os.PowerManager::class.java) }
+    var on by remember { mutableStateOf(pm?.isPowerSaveMode == true) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context, i: android.content.Intent) { on = pm?.isPowerSaveMode == true }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            context, receiver, android.content.IntentFilter(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+    return on
 }

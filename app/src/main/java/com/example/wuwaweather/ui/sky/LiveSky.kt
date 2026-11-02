@@ -33,14 +33,14 @@ import kotlin.random.Random
  * no APK size and redraws at the display's frame rate.
  */
 @Composable
-fun LiveSky(condition: Condition, isDay: Boolean, modifier: Modifier = Modifier) {
+fun LiveSky(condition: Condition, isDay: Boolean, modifier: Modifier = Modifier, animate: Boolean = true) {
     val palette = skyPaletteFor(condition, isDay)
     val spec = tween<Color>(durationMillis = 1200)
     val top by animateColorAsState(palette.top, spec, label = "skyTop")
     val mid by animateColorAsState(palette.mid, spec, label = "skyMid")
     val bottom by animateColorAsState(palette.bottom, spec, label = "skyBottom")
 
-    val time = rememberSceneTime()
+    val time = rememberSceneTime(animate)
     val particles = remember { SkyParticles.create() }
 
     val showSun = isDay && (condition == Condition.CLEAR || condition == Condition.PARTLY_CLOUDY)
@@ -100,14 +100,19 @@ fun LiveSky(condition: Condition, isDay: Boolean, modifier: Modifier = Modifier)
     }
 }
 
-/** Seconds since this composable appeared, updated every frame. */
+/**
+ * Animation clock in seconds, updated every frame while [animate] is true.
+ * When paused (hidden behind a map, or battery saver) no frames are drawn at all.
+ */
 @Composable
-private fun rememberSceneTime(): State<Float> {
+private fun rememberSceneTime(animate: Boolean): State<Float> {
     val time = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(animate) {
+        if (!animate) return@LaunchedEffect
+        val resumeFrom = time.floatValue
         val start = withFrameNanos { it }
         while (true) {
-            withFrameNanos { time.floatValue = (it - start) / 1_000_000_000f }
+            withFrameNanos { time.floatValue = resumeFrom + (it - start) / 1_000_000_000f }
         }
     }
     return time

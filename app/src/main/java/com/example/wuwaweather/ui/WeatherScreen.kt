@@ -540,9 +540,16 @@ private fun AppSettingsCard(onSetLanguage: (String) -> Unit) {
     val flow = remember { VeloraSettings.flow(context) }
     val settings by flow.collectAsStateWithLifecycle()
     val s = settings ?: SettingsData()
+    val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { }
     fun update(t: (SettingsData) -> SettingsData) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && !com.example.wuwaweather.alerts.Notifications.canPost(context)) {
+            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
         VeloraSettings.update(context, t)
         WeatherAlertWorker.schedule(context)
+        com.example.wuwaweather.alerts.AlarmScheduler.rescheduleAll(context)
     }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         GlassCard(Modifier.fillMaxWidth(), title = tr("Settings", "সেটিংস")) {
@@ -563,8 +570,30 @@ private fun AppSettingsCard(onSetLanguage: (String) -> Unit) {
                 tr("Heavy rain, thunderstorms and strong wind in the next 12 hours", "আগামী ১২ ঘণ্টায় ভারী বৃষ্টি, বজ্রঝড় ও দমকা হাওয়া"),
                 s.severeAlerts
             ) { on -> update { it.copy(severeAlerts = on) } }
+            SettingSwitch(
+                tr("Cyclones nearby", "কাছাকাছি ঘূর্ণিঝড়"),
+                tr("Tropical cyclones approaching your area", "আপনার এলাকার দিকে আসা ঘূর্ণিঝড়"),
+                s.cycloneAlerts
+            ) { on -> update { it.copy(cycloneAlerts = on) } }
+            SettingSwitch(
+                tr("Heat & air quality", "গরম ও বায়ুর মান"),
+                tr("Dangerous heat or poor air, once a day", "বিপজ্জনক গরম বা খারাপ বাতাস, দিনে একবার"),
+                s.healthAlerts
+            ) { on -> update { it.copy(healthAlerts = on) } }
+            SettingSwitch(
+                tr("Morning briefing", "সকালের সারসংক্ষেপ"),
+                tr("Today's weather, rain, air and prayer times in one alert", "আজকের আবহাওয়া, বৃষ্টি, বাতাস ও নামাজের সময় এক নোটিফিকেশনে"),
+                s.briefingEnabled
+            ) { on -> update { it.copy(briefingEnabled = on) } }
+            if (s.briefingEnabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+                    listOf(6 * 60, 7 * 60, 8 * 60, 9 * 60).forEach { m ->
+                        Pill(tr("${m / 60}:00 AM", "সকাল ${m / 60}টা"), selected = s.briefingMinutes == m) { update { it.copy(briefingMinutes = m) } }
+                    }
+                }
+            }
         }
-        if (s.rainAlerts || s.severeAlerts || s.quakeAlerts) ReliabilityCard()
+        if (s.rainAlerts || s.severeAlerts || s.quakeAlerts || s.cycloneAlerts || s.briefingEnabled) ReliabilityCard()
     }
 }
 

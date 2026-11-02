@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.example.wuwaweather.calendar.Events
 import com.example.wuwaweather.calendar.Hijri
 import com.example.wuwaweather.calendar.NotesStore
 import com.example.wuwaweather.data.Home
@@ -33,10 +34,14 @@ object AlarmScheduler {
     const val EXTRA_TEXT = "text"
     const val EXTRA_ID = "id"
     const val EXTRA_PRAYER = "prayer"
+    const val EXTRA_KIND = "kind"
+    const val KIND_BRIEFING = "briefing"
 
     private const val RC_PRAYER = 100      // + Prayer.ordinal
     private const val RC_SUHUR = 200
     private const val RC_IFTAR = 201
+    private const val RC_EVENT = 300
+    private const val RC_BRIEFING = 310
     private const val RC_NOTE = 10_000     // + note id hash
 
     fun canScheduleExact(context: Context): Boolean {
@@ -84,6 +89,9 @@ object AlarmScheduler {
             } else cancel(context, RC_IFTAR)
         } else cancel(context, RC_IFTAR)
 
+        scheduleEventReminder(context, s, home, now)
+        scheduleBriefing(context, s, home, now)
+
         // Notes & to-dos
         for (note in NotesStore.all(context)) {
             val rc = noteRequestCode(note.id)
@@ -95,6 +103,38 @@ object AlarmScheduler {
     }
 
     fun cancelNote(context: Context, id: Long) = cancel(context, noteRequestCode(id))
+
+    /** Next Islamic date / holiday, announced at 9 AM on the day. */
+    private fun scheduleEventReminder(context: Context, s: SettingsData, home: Home?, now: Long) {
+        if (!s.eventReminders) { cancel(context, RC_EVENT); return }
+        val tz = home?.tzOffsetSeconds ?: 6 * 3600
+        val zone = ZoneOffset.ofTotalSeconds(tz)
+        val today = Instant.ofEpochMilli(now).atOffset(zone).toLocalDate()
+        val next = Events.upcoming(today, s.hijriOffset, 400)
+            .map { it to it.date.atTime(9, 0).toInstant(zone).toEpochMilli() }
+            .firstOrNull { it.second > now + 5_000 }
+        if (next == null) { cancel(context, RC_EVENT); return }
+        val (e, at) = next
+        val sameDay = Events.on(e.date, s.hijriOffset).joinToString(" · ") { it.title }
+        schedule(
+            context, RC_EVENT, at, Notifications.CH_REMINDERS,
+            if (e.isNight) tr("Tonight", "আজ রাতে") else tr("Today", "আজ"),
+            sameDay + if (e.isNight) tr(" — begins after Maghrib.", " — মাগরিবের পর শুরু।") else ""
+        )
+    }
+
+    /** Daily morning briefing at the chosen time (the receiver then fetches fresh weather). */
+    private fun scheduleBriefing(context: Context, s: SettingsData, home: Home?, now: Long) {
+        if (!s.briefingEnabled || home == null) { cancel(context, RC_BRIEFING); return }
+        val zone = ZoneOffset.ofTotalSeconds(home.tzOffsetSeconds)
+        var date = Instant.ofEpochMilli(now).atOffset(zone).toLocalDate()
+        var at = date.atTime(s.briefingMinutes / 60, s.briefingMinutes % 60).toInstant(zone).toEpochMilli()
+        if (at <= now + 5_000) {
+            date = date.plusDays(1)
+            at = date.atTime(s.briefingMinutes / 60, s.briefingMinutes % 60).toInstant(zone).toEpochMilli()
+        }
+        schedule(context, RC_BRIEFING, at, Notifications.CH_REMINDERS, "Velora", "", kind = KIND_BRIEFING)
+    }
 
     /** Finds the first time >= now produced by [pick], looking ahead day by day. */
     private fun nextOccurrence(
@@ -118,7 +158,10 @@ object AlarmScheduler {
         return null
     }
 
-    private fun schedule(context: Context, rc: Int, at: Long, channel: String, title: String, text: String, prayer: Prayer? = null) {
+    private fun schedule(
+        context: Context, rc: Int, at: Long, channel: String, title: String, text: String,
+        prayer: Prayer? = null, kind: String? = null
+    ) {
         val am = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java)
             .putExtra(EXTRA_CHANNEL, channel)
@@ -126,6 +169,7 @@ object AlarmScheduler {
             .putExtra(EXTRA_TEXT, text)
             .putExtra(EXTRA_ID, rc)
             .putExtra(EXTRA_PRAYER, prayer?.name)
+            .putExtra(EXTRA_KIND, kind)
         val pi = PendingIntent.getBroadcast(context, rc, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         try {
             if (canScheduleExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)

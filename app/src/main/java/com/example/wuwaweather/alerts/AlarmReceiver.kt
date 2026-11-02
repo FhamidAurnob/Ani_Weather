@@ -11,6 +11,13 @@ import com.example.wuwaweather.quakes.QuakeWorker
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val settings = VeloraSettings.get(context)   // also sets the app language
+
+        // Morning briefing needs fresh weather, so hand it to a background worker
+        if (intent.getStringExtra(AlarmScheduler.EXTRA_KIND) == AlarmScheduler.KIND_BRIEFING) {
+            BriefingWorker.runNow(context)
+            AlarmScheduler.rescheduleAll(context)
+            return
+        }
         val channel = intent.getStringExtra(AlarmScheduler.EXTRA_CHANNEL) ?: Notifications.CH_REMINDERS
         val id = intent.getIntExtra(AlarmScheduler.EXTRA_ID, 0)
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "Velora"

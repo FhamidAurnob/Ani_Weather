@@ -30,7 +30,15 @@ data class SettingsData(
     val adhanUri: String? = null,
     val fajrAdhanUri: String? = null,
     val rainAlerts: Boolean = true,
-    val severeAlerts: Boolean = true
+    val severeAlerts: Boolean = true,
+    val cycloneAlerts: Boolean = true,
+    /** Dangerous heat and poor air quality. */
+    val healthAlerts: Boolean = true,
+    /** Islamic dates and holidays reminder on the day. */
+    val eventReminders: Boolean = true,
+    val briefingEnabled: Boolean = false,
+    /** Minutes after midnight, e.g. 420 = 7:00 AM. */
+    val briefingMinutes: Int = 7 * 60
 ) {
     val isBangla: Boolean get() = language == "bn"
 }
@@ -63,7 +71,12 @@ object VeloraSettings {
             adhanUri = p.getString("adhan_uri", null),
             fajrAdhanUri = p.getString("fajr_adhan_uri", null),
             rainAlerts = p.getBoolean("rain_alerts", d.rainAlerts),
-            severeAlerts = p.getBoolean("severe_alerts", d.severeAlerts)
+            severeAlerts = p.getBoolean("severe_alerts", d.severeAlerts),
+            cycloneAlerts = p.getBoolean("cyclone_alerts", d.cycloneAlerts),
+            healthAlerts = p.getBoolean("health_alerts", d.healthAlerts),
+            eventReminders = p.getBoolean("event_reminders", d.eventReminders),
+            briefingEnabled = p.getBoolean("briefing_enabled", d.briefingEnabled),
+            briefingMinutes = p.getInt("briefing_minutes", d.briefingMinutes)
         )
         I18n.bangla = loaded.isBangla
         _state.value = loaded
@@ -90,6 +103,11 @@ object VeloraSettings {
             .putString("fajr_adhan_uri", next.fajrAdhanUri)
             .putBoolean("rain_alerts", next.rainAlerts)
             .putBoolean("severe_alerts", next.severeAlerts)
+            .putBoolean("cyclone_alerts", next.cycloneAlerts)
+            .putBoolean("health_alerts", next.healthAlerts)
+            .putBoolean("event_reminders", next.eventReminders)
+            .putBoolean("briefing_enabled", next.briefingEnabled)
+            .putInt("briefing_minutes", next.briefingMinutes)
             .apply()
         I18n.bangla = next.isBangla
         _state.value = next

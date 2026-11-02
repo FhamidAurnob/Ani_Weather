@@ -61,7 +61,7 @@ interface OpenMeteoApi {
         @Query("current") current: String = "uv_index,precipitation",
         @Query("daily") daily: String = "uv_index_max",
         @Query("minutely_15") minutely15: String = "precipitation",
-        @Query("hourly") hourly: String = "precipitation,precipitation_probability,weather_code,wind_gusts_10m",
+        @Query("hourly") hourly: String = "precipitation,precipitation_probability,weather_code,wind_gusts_10m,apparent_temperature",
         @Query("timezone") timezone: String = "auto",
         @Query("timeformat") timeFormat: String = "unixtime",
         @Query("forecast_days") days: Int = 2
