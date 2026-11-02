@@ -20,7 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -87,7 +88,7 @@ fun SplashOverlay() {
             LoadingDots()
             Spacer(Modifier.height(16.dp))
             Text(
-                "Developed by Fhamid",
+                tr("Developed by Fhamid", "তৈরি করেছেন Fhamid"),
                 style = MaterialTheme.typography.labelSmall,
                 color = Velora.TextTertiary
             )

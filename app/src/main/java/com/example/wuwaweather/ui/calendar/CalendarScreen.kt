@@ -36,7 +36,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
+import com.example.wuwaweather.i18n.I18n
+import com.example.wuwaweather.calendar.Bangabda
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
@@ -115,11 +118,16 @@ fun CalendarScreen(bottomPadding: Dp) {
         AlarmScheduler.rescheduleAll(context)
     }
 
-    val todayHijri = remember(today, s.hijriOffset) { runCatching { Hijri.of(today, s.hijriOffset) }.getOrNull() }
+    val todayHijri = remember(today, s.hijriOffset, s.language) { runCatching { Hijri.of(today, s.hijriOffset) }.getOrNull() }
+    val todayBangla = remember(today, s.language) { Bangabda.of(today) }
 
     FeatureScreen(
-        title = "Calendar",
-        subtitle = listOfNotNull(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")), todayHijri?.toString()).joinToString(" · "),
+        title = tr("Calendar", "ক্যালেন্ডার"),
+        subtitle = listOfNotNull(
+            today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", I18n.locale)),
+            todayHijri?.toString(),
+            todayBangla.toString()
+        ).joinToString(" · "),
         bottomPadding = bottomPadding
     ) {
         // Ramadan countdown / progress
@@ -127,42 +135,46 @@ fun CalendarScreen(bottomPadding: Dp) {
 
         // Suhur & Iftar
         item(key = "fasting") {
-            GlassCard(Modifier.fillMaxWidth(), title = "Suhur & Iftar") {
+            GlassCard(Modifier.fillMaxWidth(), title = tr("Suhur & Iftar", "সাহরি ও ইফতার")) {
                 val h = home
                 if (h == null) {
-                    Text("Open the Weather tab once so Velora knows your location.", color = Velora.TextSecondary)
+                    Text(tr("Open the Weather tab once so Velora knows your location.", "লোকেশন জানতে একবার আবহাওয়া ট্যাব খুলুন।"), color = Velora.TextSecondary)
                 } else {
                     val day = remember(sel, h, s.method, s.madhab) {
                         PrayerCalculator.calculate(sel, h.lat, h.lon, h.tzOffsetSeconds, s.method, s.madhab)
                     }
                     Row(Modifier.fillMaxWidth()) {
-                        TimeBlock("Sehri ends", AlarmScheduler.formatTime(day[Prayer.FAJR], h.tzOffsetSeconds), Modifier.weight(1f))
-                        TimeBlock("Iftar", AlarmScheduler.formatTime(day[Prayer.MAGHRIB], h.tzOffsetSeconds), Modifier.weight(1f))
+                        TimeBlock(tr("Sehri ends", "সাহরির শেষ সময়"), AlarmScheduler.formatTime(day[Prayer.FAJR], h.tzOffsetSeconds), Modifier.weight(1f))
+                        TimeBlock(tr("Iftar", "ইফতার"), AlarmScheduler.formatTime(day[Prayer.MAGHRIB], h.tzOffsetSeconds), Modifier.weight(1f))
                     }
                     Text(
-                        "${sel.format(DateTimeFormatter.ofPattern("EEE d MMM"))} · ${h.name}",
+                        "${sel.format(DateTimeFormatter.ofPattern("EEE d MMM", I18n.locale))} · ${h.name}",
                         style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary
                     )
                     Spacer(Modifier.height(10.dp))
                     HorizontalDivider(color = Velora.Divider, thickness = 0.5.dp)
-                    SwitchRow("Suhur reminder", "${s.suhurMinutesBefore} min before Sehri ends", s.suhurAlert) { on ->
+                    SwitchRow(tr("Suhur reminder", "সাহরির রিমাইন্ডার"), tr("${s.suhurMinutesBefore} min before Sehri ends", "সাহরি শেষের ${s.suhurMinutesBefore} মিনিট আগে"), s.suhurAlert) { on ->
                         if (on) ensureNotifications(); update { it.copy(suhurAlert = on) }
                     }
                     if (s.suhurAlert) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                             listOf(15, 30, 45, 60).forEach { m ->
-                                Pill("$m min", selected = s.suhurMinutesBefore == m) { update { it.copy(suhurMinutesBefore = m) } }
+                                Pill(tr("$m min", "$m মিনিট"), selected = s.suhurMinutesBefore == m) { update { it.copy(suhurMinutesBefore = m) } }
                             }
                         }
                     }
-                    SwitchRow("Iftar reminder", "At Maghrib", s.iftarAlert) { on ->
+                    SwitchRow(tr("Iftar reminder", "ইফতারের রিমাইন্ডার"), tr("At Maghrib", "মাগরিবের সময়"), s.iftarAlert) { on ->
                         if (on) ensureNotifications(); update { it.copy(iftarAlert = on) }
                     }
-                    SwitchRow("Only during Ramadan", "Turn off for Sunnah / voluntary fasts", s.fastingAlertsOnlyRamadan) { on ->
+                    SwitchRow(tr("Only during Ramadan", "শুধু রমজানে"), tr("Turn off for Sunnah / voluntary fasts", "সুন্নত / নফল রোজার জন্য বন্ধ করুন"), s.fastingAlertsOnlyRamadan) { on ->
                         update { it.copy(fastingAlertsOnlyRamadan = on) }
                     }
                 }
             }
+        }
+
+        if (s.suhurAlert || s.iftarAlert) {
+            item(key = "reliable") { com.example.wuwaweather.ui.components.ReliabilityCard() }
         }
 
         // Month grid
@@ -203,7 +215,7 @@ fun CalendarScreen(bottomPadding: Dp) {
 
         // Hijri adjustment
         item(key = "hijri") {
-            GlassCard(Modifier.fillMaxWidth(), title = "Hijri date adjustment") {
+            GlassCard(Modifier.fillMaxWidth(), title = tr("Hijri date adjustment", "হিজরি তারিখ সমন্বয়")) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (-2..2).forEach { d ->
                         Pill(if (d > 0) "+$d" else "$d", selected = s.hijriOffset == d) { update { it.copy(hijriOffset = d) } }
@@ -211,7 +223,8 @@ fun CalendarScreen(bottomPadding: Dp) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Based on the Umm al-Qura calendar. Bangladesh usually follows local moon sighting, about 1 day behind Saudi Arabia (−1). Adjust if your local date differs.",
+                    tr("Based on the Umm al-Qura calendar. Bangladesh usually follows local moon sighting, about 1 day behind Saudi Arabia (−1). Adjust if your local date differs.",
+                        "উম্মুল কুরা ক্যালেন্ডারের ভিত্তিতে। বাংলাদেশে সাধারণত স্থানীয় চাঁদ দেখা অনুসারে সৌদি আরবের প্রায় ১ দিন পরে (−১)। স্থানীয় তারিখ ভিন্ন হলে সমন্বয় করুন।"),
                     style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary
                 )
             }
@@ -223,28 +236,29 @@ fun CalendarScreen(bottomPadding: Dp) {
 private fun RamadanCard(today: LocalDate, offset: Int, todayHijri: HijriDate?) {
     GlassCard(Modifier.fillMaxWidth()) {
         if (todayHijri?.isRamadan == true) {
-            Text("RAMADAN MUBARAK", style = MaterialTheme.typography.labelMedium, color = Velora.Accent)
+            Text(tr("RAMADAN MUBARAK", "রমজান মোবারক"), style = MaterialTheme.typography.labelMedium, color = Velora.Accent)
             Spacer(Modifier.height(4.dp))
-            Text("Day ${todayHijri.day} of Ramadan ${todayHijri.year}", fontFamily = Manrope, fontWeight = FontWeight.ExtraLight, fontSize = 34.sp, color = Velora.TextPrimary)
+            Text(tr("Day ${todayHijri.day} of Ramadan ${todayHijri.year}", "রমজান ${todayHijri.year}-এর ${todayHijri.day}তম দিন"), fontFamily = Manrope, fontWeight = FontWeight.ExtraLight, fontSize = 34.sp, color = Velora.TextPrimary)
             Spacer(Modifier.height(10.dp))
             ProgressBar(todayHijri.day / 30f)
         } else {
             val start = remember(today, offset) { Hijri.nextRamadanStart(today, offset) }
-            Text("RAMADAN", style = MaterialTheme.typography.labelMedium, color = Velora.Accent)
+            Text(tr("RAMADAN", "রমজান"), style = MaterialTheme.typography.labelMedium, color = Velora.Accent)
             Spacer(Modifier.height(4.dp))
             if (start != null) {
                 val days = ChronoUnit.DAYS.between(today, start)
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("$days", fontFamily = Manrope, fontWeight = FontWeight.ExtraLight, fontSize = 52.sp, color = Velora.TextPrimary)
                     Spacer(Modifier.width(8.dp))
-                    Text(if (days == 1L) "day to go" else "days to go", style = MaterialTheme.typography.titleMedium, color = Velora.TextSecondary, modifier = Modifier.padding(bottom = 12.dp))
+                    Text(if (days == 1L) tr("day to go", "দিন বাকি") else tr("days to go", "দিন বাকি"), style = MaterialTheme.typography.titleMedium, color = Velora.TextSecondary, modifier = Modifier.padding(bottom = 12.dp))
                 }
                 Text(
-                    "Expected to begin ${start.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy"))} (subject to moon sighting)",
+                    tr("Expected to begin ${start.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", I18n.locale))} (subject to moon sighting)",
+                        "সম্ভাব্য শুরু ${start.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", I18n.locale))} (চাঁদ দেখা সাপেক্ষে)"),
                     style = MaterialTheme.typography.bodyMedium, color = Velora.TextSecondary
                 )
             } else {
-                Text("Couldn't calculate the next Ramadan date.", color = Velora.TextSecondary)
+                Text(tr("Couldn't calculate the next Ramadan date.", "পরবর্তী রমজানের তারিখ হিসাব করা যায়নি।"), color = Velora.TextSecondary)
             }
         }
     }
@@ -305,9 +319,9 @@ private fun MonthCard(
 
     GlassCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onPrev) { Icon(Icons.Rounded.KeyboardArrowLeft, "Previous month", tint = Velora.TextPrimary) }
+            IconButton(onClick = onPrev) { Icon(Icons.Rounded.KeyboardArrowLeft, tr("Previous month", "আগের মাস"), tint = Velora.TextPrimary) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(ym.format(DateTimeFormatter.ofPattern("MMMM yyyy")), style = MaterialTheme.typography.titleMedium, color = Velora.TextPrimary)
+                Text(ym.format(DateTimeFormatter.ofPattern("MMMM yyyy", I18n.locale)), style = MaterialTheme.typography.titleMedium, color = Velora.TextPrimary)
                 if (hFirst != null && hLast != null) {
                     Text(
                         if (hFirst.month == hLast.month) "${hFirst.monthName} ${hFirst.year}"
@@ -316,7 +330,7 @@ private fun MonthCard(
                     )
                 }
             }
-            IconButton(onClick = onNext) { Icon(Icons.Rounded.KeyboardArrowRight, "Next month", tint = Velora.TextPrimary) }
+            IconButton(onClick = onNext) { Icon(Icons.Rounded.KeyboardArrowRight, tr("Next month", "পরের মাস"), tint = Velora.TextPrimary) }
         }
         Spacer(Modifier.height(6.dp))
         // Weekday labels
@@ -324,7 +338,7 @@ private fun MonthCard(
             (0 until 7).forEach { i ->
                 val dow = firstDow.plus(i.toLong())
                 Text(
-                    dow.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                    dow.getDisplayName(TextStyle.NARROW, I18n.locale),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (dow == DayOfWeek.FRIDAY) Velora.Accent else Velora.TextTertiary,
                     textAlign = TextAlign.Center,
@@ -420,10 +434,10 @@ private fun DayNotesCard(
 
     GlassCard(
         Modifier.fillMaxWidth(),
-        title = date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")) + (hijri?.let { " · $it" } ?: "")
+        title = date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", I18n.locale)) + (hijri?.let { " · $it" } ?: "") + " · " + Bangabda.of(date)
     ) {
         if (notes.isEmpty()) {
-            Text("Nothing planned. Add a note or to-do below.", style = MaterialTheme.typography.bodyMedium, color = Velora.TextTertiary)
+            Text(tr("Nothing planned. Add a note or to-do below.", "কিছু পরিকল্পনা নেই। নিচে নোট বা করণীয় যোগ করুন।"), style = MaterialTheme.typography.bodyMedium, color = Velora.TextTertiary)
         }
         notes.forEach { n ->
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -452,13 +466,13 @@ private fun DayNotesCard(
                     )
                     n.remindAt?.let {
                         Text(
-                            "⏰ " + DateTimeFormatter.ofPattern("h:mm a").format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())),
+                            "⏰ " + DateTimeFormatter.ofPattern("h:mm a", I18n.locale).format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())),
                             style = MaterialTheme.typography.labelSmall, color = Velora.TextSecondary
                         )
                     }
                 }
                 IconButton(onClick = { onDelete(n) }) {
-                    Icon(Icons.Rounded.Close, "Delete", tint = Velora.TextTertiary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Close, tr("Delete", "মুছুন"), tint = Velora.TextTertiary, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -473,7 +487,7 @@ private fun DayNotesCard(
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             Box(Modifier.weight(1f)) {
-                if (text.isEmpty()) Text(if (isTodo) "Add a to-do…" else "Add a note…", color = Velora.TextTertiary, style = MaterialTheme.typography.bodyLarge)
+                if (text.isEmpty()) Text(if (isTodo) tr("Add a to-do…", "করণীয় যোগ করুন…") else tr("Add a note…", "নোট যোগ করুন…"), color = Velora.TextTertiary, style = MaterialTheme.typography.bodyLarge)
                 BasicTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -492,12 +506,12 @@ private fun DayNotesCard(
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Pill("To-do", selected = isTodo) { isTodo = true }
-            Pill("Note", selected = !isTodo) { isTodo = false }
-            Pill(remindMinutes?.let { "⏰ " + LocalTime.of(it / 60, it % 60).format(DateTimeFormatter.ofPattern("h:mm a")) } ?: "⏰ Remind",
+            Pill(tr("To-do", "করণীয়"), selected = isTodo) { isTodo = true }
+            Pill(tr("Note", "নোট"), selected = !isTodo) { isTodo = false }
+            Pill(remindMinutes?.let { "⏰ " + LocalTime.of(it / 60, it % 60).format(DateTimeFormatter.ofPattern("h:mm a", I18n.locale)) } ?: tr("⏰ Remind", "⏰ রিমাইন্ডার"),
                 selected = remindMinutes != null) { showPicker = true }
             Spacer(Modifier.weight(1f))
-            Pill("Add", selected = text.isNotBlank()) {
+            Pill(tr("Add", "যোগ করুন"), selected = text.isNotBlank()) {
                 if (text.isNotBlank()) {
                     onAdd(buildNote(date, text, isTodo, remindMinutes))
                     text = ""; remindMinutes = null
@@ -511,9 +525,9 @@ private fun DayNotesCard(
         val picker = rememberTimePickerState(initialHour = remindMinutes?.div(60) ?: now.hour, initialMinute = remindMinutes?.rem(60) ?: 0, is24Hour = false)
         AlertDialog(
             onDismissRequest = { showPicker = false },
-            confirmButton = { TextButton(onClick = { remindMinutes = picker.hour * 60 + picker.minute; showPicker = false }) { Text("Set") } },
+            confirmButton = { TextButton(onClick = { remindMinutes = picker.hour * 60 + picker.minute; showPicker = false }) { Text(tr("Set", "ঠিক আছে")) } },
             dismissButton = {
-                TextButton(onClick = { remindMinutes = null; showPicker = false }) { Text("No reminder") }
+                TextButton(onClick = { remindMinutes = null; showPicker = false }) { Text(tr("No reminder", "রিমাইন্ডার নেই")) }
             },
             text = { TimePicker(state = picker) },
             containerColor = Color(0xFF151B38)

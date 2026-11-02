@@ -49,16 +49,22 @@ interface ApiInterface {
     ): Response<AirPollutionResponse>
 }
 
-/** Open-Meteo (free, no API key) — used for the UV index, which OpenWeather's free tier lacks. */
+/**
+ * Open-Meteo (free, no API key): UV index, 15-minute rain nowcast and hourly storm signals,
+ * which OpenWeather's free tier lacks.
+ */
 interface OpenMeteoApi {
     @GET("v1/forecast")
-    suspend fun getUv(
+    suspend fun getExtras(
         @Query("latitude") lat: Double,
         @Query("longitude") lon: Double,
-        @Query("current") current: String = "uv_index",
+        @Query("current") current: String = "uv_index,precipitation",
         @Query("daily") daily: String = "uv_index_max",
+        @Query("minutely_15") minutely15: String = "precipitation",
+        @Query("hourly") hourly: String = "precipitation,precipitation_probability,weather_code,wind_gusts_10m",
         @Query("timezone") timezone: String = "auto",
-        @Query("forecast_days") days: Int = 1
+        @Query("timeformat") timeFormat: String = "unixtime",
+        @Query("forecast_days") days: Int = 2
     ): Response<OpenMeteoUvResponse>
 }
 

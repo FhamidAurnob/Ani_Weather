@@ -1,13 +1,15 @@
 package com.example.wuwaweather.calendar
 
+import com.example.wuwaweather.i18n.localDigits
+import com.example.wuwaweather.i18n.tr
 import java.time.LocalDate
 import java.time.chrono.HijrahDate
 import java.time.temporal.ChronoField
 
 data class HijriDate(val day: Int, val month: Int, val year: Int) {
-    val monthName: String get() = Hijri.MONTHS[month - 1]
+    val monthName: String get() = tr(Hijri.MONTHS[month - 1], Hijri.MONTHS_BN[month - 1])
     val isRamadan: Boolean get() = month == 9
-    override fun toString() = "$day $monthName $year"
+    override fun toString() = "$day $monthName $year".localDigits()
 }
 
 /** Hijri dates from Java's Umm al-Qura calendar, shifted by a local moon-sighting offset. */
@@ -15,6 +17,11 @@ object Hijri {
     val MONTHS = listOf(
         "Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani", "Jumada al-Ula", "Jumada al-Akhirah",
         "Rajab", "Sha'ban", "Ramadan", "Shawwal", "Dhu al-Qa'dah", "Dhu al-Hijjah"
+    )
+
+    val MONTHS_BN = listOf(
+        "মুহাররম", "সফর", "রবিউল আউয়াল", "রবিউস সানি", "জমাদিউল আউয়াল", "জমাদিউস সানি",
+        "রজব", "শাবান", "রমজান", "শাওয়াল", "জিলকদ", "জিলহজ"
     )
 
     fun of(date: LocalDate, offsetDays: Int): HijriDate {

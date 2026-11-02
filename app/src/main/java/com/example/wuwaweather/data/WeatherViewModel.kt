@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.viewModelScope
 import com.example.wuwaweather.WeatherClient
+import com.example.wuwaweather.i18n.tr
 import com.example.wuwaweather.BuildConfig
 import com.example.wuwaweather.alerts.AlarmScheduler
 import com.example.wuwaweather.widget.VeloraWidget
@@ -39,7 +40,7 @@ data class PageState(
     /** Name to show before the weather has loaded. */
     val displayName: String
         get() = bundle?.current?.city ?: when {
-            isCurrentLocation -> "My location"
+            isCurrentLocation -> tr("My location", "আমার অবস্থান")
             key.startsWith(COORD_PREFIX) -> key.substringAfter('|')
             else -> key
         }
@@ -75,6 +76,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = WeatherRepository()
     private val location = LocationProvider(app)
     private val prefs = app.getSharedPreferences("velora_prefs", Context.MODE_PRIVATE)
+    private val cache = WeatherCache(app)
 
     private val _state = MutableStateFlow(
         WeatherUiState(
@@ -92,13 +94,15 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
             if (prefs.getBoolean(KEY_USE_LOCATION, false) && location.hasPermission()) add(LOCATION_KEY)
             addAll(savedCities())
         }.ifEmpty { listOf(DEFAULT_CITY) }
-        _state.update { it.copy(pages = keys.map { k -> PageState(k) }) }
+        // Instant start: show the last saved weather right away, then refresh
+        _state.update { it.copy(pages = keys.map { k -> PageState(k, isLoading = true, bundle = cache.get(k)) }) }
         keys.forEach { load(it) }
 
-        // Keep the splash up for a short brand moment, then until the first page is ready
+        // Short brand moment; longer only if there's nothing cached to show yet
         viewModelScope.launch {
-            delay(1600)
-            while (_state.value.pages.firstOrNull()?.isLoading == true) delay(100)
+            val hasCache = _state.value.pages.firstOrNull()?.bundle != null
+            delay(if (hasCache) 700 else 1600)
+            while (_state.value.pages.firstOrNull()?.let { it.isLoading && it.bundle == null } == true) delay(100)
             _state.update { it.copy(showSplash = false) }
         }
     }
@@ -116,7 +120,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
         if (granted) {
             enableLocation()
         } else if (userInitiated) {
-            showMessage("Location permission denied. You can allow it in Settings.")
+            showMessage(tr("Location permission denied. You can allow it in Settings.", "লোকেশন অনুমতি দেওয়া হয়নি। সেটিংস থেকে অনুমতি দিতে পারেন।"))
         }
     }
 
@@ -150,7 +154,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
                 val name = r.name ?: return@mapNotNull null
                 val lat = r.lat ?: return@mapNotNull null
                 val lon = r.lon ?: return@mapNotNull null
-                val country = r.country?.let { java.util.Locale("", it).displayCountry.ifBlank { it } }
+                val country = r.country?.let { java.util.Locale("", it).getDisplayCountry(com.example.wuwaweather.i18n.I18n.locale).ifBlank { it } }
                 CitySuggestion(name, listOfNotNull(r.state, country).joinToString(", "), lat, lon)
             }.distinctBy { "${it.name}|${it.detail}" }
             _state.update { it.copy(suggestions = list) }
@@ -200,7 +204,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isSearching = false) }
-                showMessage((e as? WeatherException)?.message ?: "Something went wrong. Please try again.")
+                showMessage((e as? WeatherException)?.message ?: tr("Something went wrong. Please try again.", "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।"))
             }
         }
     }
@@ -230,6 +234,14 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
         refreshAll()
     }
 
+    /** Switches between English and Bangla, then reloads so descriptions are translated too. */
+    fun setLanguage(lang: String) {
+        val app = getApplication<Application>()
+        VeloraSettings.update(app) { it.copy(language = lang) }
+        refreshAll()
+        runCatching { com.example.wuwaweather.alerts.AlarmScheduler.rescheduleAll(app) }
+    }
+
     fun toggleBackgroundMode() {
         val next = if (_state.value.backgroundMode == BackgroundMode.LIVE) BackgroundMode.REALISTIC else BackgroundMode.LIVE
         prefs.edit().putString(KEY_MODE, next.name).apply()
@@ -251,7 +263,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val place: Place = when {
                     key == LOCATION_KEY ->
-                        location.current() ?: throw WeatherException("Couldn't get your location. Is location turned on?")
+                        location.current() ?: throw WeatherException(tr("Couldn't get your location. Is location turned on?", "আপনার অবস্থান পাওয়া যায়নি। লোকেশন চালু আছে কি?"))
                     key.startsWith(COORD_PREFIX) -> {
                         val (lat, lon) = key.removePrefix(COORD_PREFIX).substringBefore('|').split(',').map { it.toDouble() }
                         Place.Coords(lat, lon)
@@ -260,11 +272,12 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 val bundle = repo.load(place, _state.value.units)
                 updatePage(key) { it.copy(isLoading = false, bundle = bundle) }
+                cache.put(key, bundle)
                 if (_state.value.pages.firstOrNull()?.key == key) updateWidget(bundle)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val msg = (e as? WeatherException)?.message ?: "Something went wrong. Please try again."
+                val msg = (e as? WeatherException)?.message ?: tr("Something went wrong. Please try again.", "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।")
                 updatePage(key) { it.copy(isLoading = false, error = msg) }
             }
         }
@@ -296,6 +309,7 @@ class WeatherViewModel(app: Application) : AndroidViewModel(app) {
             ?: listOf(prefs.getString(KEY_LAST_CITY, DEFAULT_CITY) ?: DEFAULT_CITY)
 
     private fun persistCities() {
+        cache.retain(_state.value.pages.map { it.key })
         val cities = _state.value.pages.filterNot { it.isCurrentLocation }.map { it.key }
         prefs.edit().putString(KEY_CITIES, cities.joinToString("\n")).apply()
     }

@@ -37,10 +37,12 @@ data class Quake(
 )
 
 /** USGS real-time feeds (free, no key). */
-enum class QuakeFeed(val path: String, val label: String) {
-    DAY("2.5_day", "Past day · M2.5+"),
-    WEEK("4.5_week", "Past week · M4.5+"),
-    SIGNIFICANT("significant_month", "Significant · 30 days")
+enum class QuakeFeed(val path: String, private val en: String, private val bn: String) {
+    DAY("2.5_day", "Past day · M2.5+", "গত ২৪ ঘণ্টা · M2.5+"),
+    WEEK("4.5_week", "Past week · M4.5+", "গত সপ্তাহ · M4.5+"),
+    SIGNIFICANT("significant_month", "Significant · 30 days", "উল্লেখযোগ্য · ৩০ দিন");
+
+    val label: String get() = com.example.wuwaweather.i18n.tr(en, bn)
 }
 
 object QuakeRepository {

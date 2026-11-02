@@ -14,6 +14,9 @@ import com.example.wuwaweather.data.VeloraSettings
 import com.example.wuwaweather.prayer.Prayer
 import com.example.wuwaweather.prayer.PrayerCalculator
 import com.example.wuwaweather.prayer.PrayerDay
+import com.example.wuwaweather.i18n.I18n
+import com.example.wuwaweather.i18n.localDigits
+import com.example.wuwaweather.i18n.tr
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -29,6 +32,7 @@ object AlarmScheduler {
     const val EXTRA_TITLE = "title"
     const val EXTRA_TEXT = "text"
     const val EXTRA_ID = "id"
+    const val EXTRA_PRAYER = "prayer"
 
     private const val RC_PRAYER = 100      // + Prayer.ordinal
     private const val RC_SUHUR = 200
@@ -53,8 +57,9 @@ object AlarmScheduler {
             if (at == null) cancel(context, rc)
             else schedule(
                 context, rc, at, Notifications.CH_PRAYER,
-                if (p == Prayer.SUNRISE) "Sunrise" else "It's time for ${p.label}",
-                "${p.label} · ${formatTime(at, home.tzOffsetSeconds)} in ${home.name}"
+                if (p == Prayer.SUNRISE) p.label else tr("It's time for ${p.label}", "${p.label}-এর সময় হয়েছে"),
+                "${p.label} · ${formatTime(at, home.tzOffsetSeconds)} · ${home.name}",
+                prayer = p
             )
         }
 
@@ -63,16 +68,19 @@ object AlarmScheduler {
             val at = nextOccurrence(home, s, now, fastingDay = true) { it[Prayer.FAJR] - s.suhurMinutesBefore * 60_000L }
             if (at != null) {
                 val fajr = at + s.suhurMinutesBefore * 60_000L
-                schedule(context, RC_SUHUR, at, Notifications.CH_FASTING, "Suhur ends in ${s.suhurMinutesBefore} min",
-                    "Sehri ends at ${formatTime(fajr, home.tzOffsetSeconds)} (Fajr). Finish your Suhur.")
+                schedule(context, RC_SUHUR, at, Notifications.CH_FASTING,
+                    tr("Suhur ends in ${s.suhurMinutesBefore} min", "${s.suhurMinutesBefore} মিনিট পর সাহরির সময় শেষ").localDigits(),
+                    tr("Sehri ends at ${formatTime(fajr, home.tzOffsetSeconds)} (Fajr). Finish your Suhur.",
+                        "সাহরির শেষ সময় ${formatTime(fajr, home.tzOffsetSeconds)} (ফজর)। সাহরি শেষ করুন।"))
             } else cancel(context, RC_SUHUR)
         } else cancel(context, RC_SUHUR)
 
         if (home != null && s.iftarAlert) {
             val at = nextOccurrence(home, s, now, fastingDay = true) { it[Prayer.MAGHRIB] }
             if (at != null) {
-                schedule(context, RC_IFTAR, at, Notifications.CH_FASTING, "It's time for Iftar",
-                    "Maghrib · ${formatTime(at, home.tzOffsetSeconds)}. May Allah accept your fast.")
+                schedule(context, RC_IFTAR, at, Notifications.CH_FASTING, tr("It's time for Iftar", "ইফতারের সময় হয়েছে"),
+                    tr("Maghrib · ${formatTime(at, home.tzOffsetSeconds)}. May Allah accept your fast.",
+                        "মাগরিব · ${formatTime(at, home.tzOffsetSeconds)}। আল্লাহ আপনার রোজা কবুল করুন।"))
             } else cancel(context, RC_IFTAR)
         } else cancel(context, RC_IFTAR)
 
@@ -81,7 +89,7 @@ object AlarmScheduler {
             val rc = noteRequestCode(note.id)
             val at = note.remindAt
             if (at != null && at > now && !note.done) {
-                schedule(context, rc, at, Notifications.CH_REMINDERS, if (note.isTodo) "To-do" else "Reminder", note.text)
+                schedule(context, rc, at, Notifications.CH_REMINDERS, if (note.isTodo) tr("To-do", "করণীয়") else tr("Reminder", "রিমাইন্ডার"), note.text)
             } else cancel(context, rc)
         }
     }
@@ -110,13 +118,14 @@ object AlarmScheduler {
         return null
     }
 
-    private fun schedule(context: Context, rc: Int, at: Long, channel: String, title: String, text: String) {
+    private fun schedule(context: Context, rc: Int, at: Long, channel: String, title: String, text: String, prayer: Prayer? = null) {
         val am = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java)
             .putExtra(EXTRA_CHANNEL, channel)
             .putExtra(EXTRA_TITLE, title)
             .putExtra(EXTRA_TEXT, text)
             .putExtra(EXTRA_ID, rc)
+            .putExtra(EXTRA_PRAYER, prayer?.name)
         val pi = PendingIntent.getBroadcast(context, rc, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         try {
             if (canScheduleExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
@@ -139,7 +148,7 @@ object AlarmScheduler {
     private fun noteRequestCode(id: Long) = RC_NOTE + (id % 1_000_000L).toInt()
 
     fun formatTime(epochMillis: Long, tzOffsetSeconds: Int): String =
-        DateTimeFormatter.ofPattern("h:mm a").format(
+        DateTimeFormatter.ofPattern("h:mm a", I18n.locale).format(
             Instant.ofEpochMilli(epochMillis + 30_000).atOffset(ZoneOffset.ofTotalSeconds(tzOffsetSeconds))
-        )
+        ).localDigits()
 }

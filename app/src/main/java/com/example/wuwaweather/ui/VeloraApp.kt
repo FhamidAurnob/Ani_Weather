@@ -37,7 +37,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,7 +66,11 @@ import com.example.wuwaweather.ui.sky.RealisticSky
 import com.example.wuwaweather.ui.theme.Velora
 import kotlinx.coroutines.launch
 
-enum class Tab(val label: String) { WEATHER("Weather"), MAPS("Maps"), QUAKES("Quakes"), PRAYER("Prayer"), CALENDAR("Calendar") }
+enum class Tab(private val en: String, private val bn: String) {
+    WEATHER("Weather", "আবহাওয়া"), MAPS("Maps", "মানচিত্র"), QUAKES("Quakes", "ভূমিকম্প"), PRAYER("Prayer", "নামাজ"), CALENDAR("Calendar", "ক্যালেন্ডার");
+
+    val label: String get() = tr(en, bn)
+}
 
 /** Everything the weather tab and city picker can ask the ViewModel to do. */
 class WeatherActions(
@@ -78,7 +83,8 @@ class WeatherActions(
     val onUseLocation: () -> Unit,
     val onSelectPlace: (Int) -> Unit,
     val onRemovePlace: (String) -> Unit,
-    val onDismissMessage: () -> Unit
+    val onDismissMessage: () -> Unit,
+    val onSetLanguage: (String) -> Unit
 )
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -117,7 +123,8 @@ fun VeloraApp(state: WeatherUiState, actions: WeatherActions) {
                     onOpenCities = { showCities = true },
                     onRefresh = actions.onRefresh,
                     onToggleMode = actions.onToggleMode,
-                    onToggleUnits = actions.onToggleUnits
+                    onToggleUnits = actions.onToggleUnits,
+                    onSetLanguage = actions.onSetLanguage
                 )
                 Tab.MAPS -> MapsScreen(bottomPadding = contentBottom)
                 Tab.QUAKES -> QuakesScreen(bottomPadding = contentBottom)

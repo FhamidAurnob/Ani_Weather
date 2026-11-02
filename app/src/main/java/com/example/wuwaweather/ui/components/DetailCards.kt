@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,8 +67,8 @@ fun DetailsSection(bundle: WeatherBundle, modifier: Modifier = Modifier) {
         SunCard(c)
         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
             val km = if (units == UnitSystem.IMPERIAL) c.visibility / 0.621371 else c.visibility
-            SimpleTile("Visibility", formatDistance(c.visibility, units), visibilityNote(km), Modifier.weight(1f))
-            SimpleTile("Cloud cover", "${c.cloudiness}%", cloudNote(c.cloudiness), Modifier.weight(1f))
+            SimpleTile(tr("Visibility", "দৃশ্যমানতা"), formatDistance(c.visibility, units), visibilityNote(km), Modifier.weight(1f))
+            SimpleTile(tr("Cloud cover", "মেঘের পরিমাণ"), "${c.cloudiness}%", cloudNote(c.cloudiness), Modifier.weight(1f))
         }
     }
 }
@@ -96,10 +97,10 @@ private fun Note(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun WindTile(speed: Double, deg: Int, units: UnitSystem, modifier: Modifier) {
-    Tile("Wind", modifier) {
+    Tile(tr("Wind", "বাতাস"), modifier) {
         Column(Modifier.align(Alignment.TopStart)) {
             BigValue(String.format(Locale.getDefault(), "%.1f", speed), units.wind)
-            Note("from ${compassPoint(deg)}")
+            Note(tr("from ${compassPoint(deg)}", "${compassPoint(deg)} দিক থেকে"))
         }
         Canvas(Modifier.size(54.dp).align(Alignment.BottomEnd)) {
             val r = size.minDimension / 2
@@ -134,15 +135,15 @@ private fun WindTile(speed: Double, deg: Int, units: UnitSystem, modifier: Modif
 
 @Composable
 private fun FeelsLikeTile(feels: Int, actual: Int, modifier: Modifier) {
-    Tile("Feels like", modifier) {
+    Tile(tr("Feels like", "অনুভূত তাপমাত্রা"), modifier) {
         Column {
             BigValue("$feels°")
             Spacer(Modifier.height(6.dp))
             Note(
                 when {
-                    feels >= actual + 2 -> "Humidity makes it feel warmer."
-                    feels <= actual - 2 -> "Wind makes it feel cooler."
-                    else -> "Similar to the actual temperature."
+                    feels >= actual + 2 -> tr("Humidity makes it feel warmer.", "আর্দ্রতার কারণে বেশি গরম লাগছে।")
+                    feels <= actual - 2 -> tr("Wind makes it feel cooler.", "বাতাসের কারণে বেশি ঠান্ডা লাগছে।")
+                    else -> tr("Similar to the actual temperature.", "প্রকৃত তাপমাত্রার কাছাকাছি।")
                 }
             )
         }
@@ -151,15 +152,15 @@ private fun FeelsLikeTile(feels: Int, actual: Int, modifier: Modifier) {
 
 @Composable
 private fun HumidityTile(humidity: Int, modifier: Modifier) {
-    Tile("Humidity", modifier) {
+    Tile(tr("Humidity", "আর্দ্রতা"), modifier) {
         Column(Modifier.align(Alignment.TopStart)) {
             BigValue("$humidity%")
             Note(
                 when {
-                    humidity >= 80 -> "Very humid"
-                    humidity >= 60 -> "Humid"
-                    humidity >= 35 -> "Comfortable"
-                    else -> "Dry"
+                    humidity >= 80 -> tr("Very humid", "অত্যন্ত আর্দ্র")
+                    humidity >= 60 -> tr("Humid", "আর্দ্র")
+                    humidity >= 35 -> tr("Comfortable", "আরামদায়ক")
+                    else -> tr("Dry", "শুষ্ক")
                 }
             )
         }
@@ -177,14 +178,14 @@ private fun HumidityTile(humidity: Int, modifier: Modifier) {
 
 @Composable
 private fun PressureTile(pressure: Int, modifier: Modifier) {
-    Tile("Pressure", modifier) {
+    Tile(tr("Pressure", "বায়ুচাপ"), modifier) {
         Column(Modifier.align(Alignment.TopStart)) {
             BigValue("$pressure", "hPa")
             Note(
                 when {
-                    pressure < 1000 -> "Low"
-                    pressure > 1025 -> "High"
-                    else -> "Normal"
+                    pressure < 1000 -> tr("Low", "নিম্ন")
+                    pressure > 1025 -> tr("High", "উচ্চ")
+                    else -> tr("Normal", "স্বাভাবিক")
                 }
             )
         }
@@ -219,7 +220,7 @@ private fun SunCard(c: CurrentWeather, modifier: Modifier = Modifier) {
     val progress = ((nowSec - c.sunrise).toFloat() / (c.sunset - c.sunrise).coerceAtLeast(1)).coerceIn(0f, 1f)
     val isUp = nowSec in c.sunrise until c.sunset
 
-    GlassCard(modifier.fillMaxWidth(), title = "Sun") {
+    GlassCard(modifier.fillMaxWidth(), title = tr("Sun", "সূর্য")) {
         Canvas(Modifier.fillMaxWidth().height(96.dp)) {
             val w = size.width
             val h = size.height
@@ -264,8 +265,8 @@ private fun SunCard(c: CurrentWeather, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            SunTime("Sunrise", WeatherRepository.format(c.sunrise, tz, "HH:mm"))
-            SunTime("Sunset", WeatherRepository.format(c.sunset, tz, "HH:mm"), alignEnd = true)
+            SunTime(tr("Sunrise", "সূর্যোদয়"), WeatherRepository.format(c.sunrise, tz, "HH:mm"))
+            SunTime(tr("Sunset", "সূর্যাস্ত"), WeatherRepository.format(c.sunset, tz, "HH:mm"), alignEnd = true)
         }
     }
 }
@@ -279,7 +280,9 @@ private fun SunTime(label: String, time: String, alignEnd: Boolean = false) {
 }
 
 private fun compassPoint(deg: Int): String {
-    val points = arrayOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+    val points = if (com.example.wuwaweather.i18n.I18n.bangla)
+        arrayOf("উত্তর", "উত্তর-পূর্ব", "পূর্ব", "দক্ষিণ-পূর্ব", "দক্ষিণ", "দক্ষিণ-পশ্চিম", "পশ্চিম", "উত্তর-পশ্চিম")
+    else arrayOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
     return points[(((deg % 360) + 360) % 360 / 45f + 0.5f).toInt() % 8]
 }
 
@@ -289,16 +292,16 @@ private fun formatDistance(value: Double, units: UnitSystem): String =
 
 // ---------- Air quality & UV ----------
 
-private val aqiLabels = listOf("Good", "Fair", "Moderate", "Poor", "Very poor")
+private val aqiLabels get() = listOf(tr("Good", "ভালো"), tr("Fair", "মোটামুটি"), tr("Moderate", "মাঝারি"), tr("Poor", "খারাপ"), tr("Very poor", "অত্যন্ত খারাপ"))
 private val aqiColors = listOf(Color(0xFF6BD68A), Color(0xFFC8E06A), Color(0xFFFFD36B), Color(0xFFFF9B5E), Color(0xFFE5677A))
 
 @Composable
 private fun AirQualityTile(air: AirQuality, modifier: Modifier) {
     val idx = (air.index - 1).coerceIn(0, 4)
-    Tile("Air quality", modifier) {
+    Tile(tr("Air quality", "বায়ুর মান"), modifier) {
         Column(Modifier.align(Alignment.TopStart)) {
             BigValue(aqiLabels[idx])
-            Note(air.pm25?.let { "PM2.5 · ${it.roundToInt()} µg/m³" } ?: "Index ${air.index} of 5")
+            Note(air.pm25?.let { "PM2.5 · ${it.roundToInt()} µg/m³" } ?: tr("Index ${air.index} of 5", "সূচক ${air.index} / ৫"))
         }
         SegmentBar(
             colors = aqiColors,
@@ -312,16 +315,16 @@ private fun AirQualityTile(air: AirQuality, modifier: Modifier) {
 private fun UvTile(uv: UvInfo, modifier: Modifier) {
     val value = uv.now.roundToInt()
     val label = when {
-        value <= 2 -> "Low"
-        value <= 5 -> "Moderate"
-        value <= 7 -> "High"
-        value <= 10 -> "Very high"
-        else -> "Extreme"
+        value <= 2 -> tr("Low", "কম")
+        value <= 5 -> tr("Moderate", "মাঝারি")
+        value <= 7 -> tr("High", "বেশি")
+        value <= 10 -> tr("Very high", "অনেক বেশি")
+        else -> tr("Extreme", "চরম")
     }
-    Tile("UV index", modifier) {
+    Tile(tr("UV index", "ইউভি সূচক"), modifier) {
         Column(Modifier.align(Alignment.TopStart)) {
             BigValue("$value", label)
-            Note(uv.todayMax?.let { "Today's max: ${it.roundToInt()}" } ?: "")
+            Note(uv.todayMax?.let { tr("Today's max: ${it.roundToInt()}", "আজ সর্বোচ্চ: ${it.roundToInt()}") } ?: "")
         }
         SegmentBar(
             colors = listOf(Color(0xFF6BD68A), Color(0xFFFFD36B), Color(0xFFFF9B5E), Color(0xFFE5677A), Color(0xFFB07CFF)),
@@ -344,15 +347,15 @@ private fun SegmentBar(colors: List<Color>, position: Float, modifier: Modifier 
 }
 
 private fun visibilityNote(km: Double) = when {
-    km >= 10 -> "Perfectly clear view."
-    km >= 5 -> "Good visibility."
-    km >= 2 -> "Haze is reducing visibility."
-    else -> "Low visibility. Take care."
+    km >= 10 -> tr("Perfectly clear view.", "একদম পরিষ্কার দেখা যাচ্ছে।")
+    km >= 5 -> tr("Good visibility.", "ভালো দৃশ্যমানতা।")
+    km >= 2 -> tr("Haze is reducing visibility.", "ধোঁয়াশায় দৃশ্যমানতা কমেছে।")
+    else -> tr("Low visibility. Take care.", "দৃশ্যমানতা কম। সাবধানে চলুন।")
 }
 
 private fun cloudNote(pct: Int) = when {
-    pct < 15 -> "Clear skies."
-    pct < 50 -> "A few clouds."
-    pct < 85 -> "Mostly cloudy."
-    else -> "Overcast."
+    pct < 15 -> tr("Clear skies.", "পরিষ্কার আকাশ।")
+    pct < 50 -> tr("A few clouds.", "অল্প মেঘ।")
+    pct < 85 -> tr("Mostly cloudy.", "বেশিরভাগ মেঘলা।")
+    else -> tr("Overcast.", "মেঘাচ্ছন্ন।")
 }

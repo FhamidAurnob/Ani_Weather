@@ -42,7 +42,17 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.wuwaweather.alerts.WeatherAlertWorker
+import com.example.wuwaweather.data.SettingsData
+import com.example.wuwaweather.data.VeloraSettings
+import com.example.wuwaweather.ui.components.NowcastCard
+import com.example.wuwaweather.ui.components.ReliabilityCard
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -90,12 +100,13 @@ fun WeatherTab(
     onOpenCities: () -> Unit,
     onRefresh: (String) -> Unit,
     onToggleMode: () -> Unit,
-    onToggleUnits: () -> Unit
+    onToggleUnits: () -> Unit,
+    onSetLanguage: (String) -> Unit
 ) {
     val page = state.current ?: return
     val bundle = page.bundle
     when {
-        bundle != null -> WeatherContent(state, page, bundle, bottomPadding, onOpenCities, onRefresh, onToggleMode, onToggleUnits)
+        bundle != null -> WeatherContent(state, page, bundle, bottomPadding, onOpenCities, onRefresh, onToggleMode, onToggleUnits, onSetLanguage)
         page.error != null -> EmptyState(page, page.error, onRetry = { onRefresh(page.key) }, onOpenCities = onOpenCities)
         else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Velora.TextPrimary, strokeWidth = 2.dp)
@@ -112,7 +123,8 @@ private fun WeatherContent(
     onOpenCities: () -> Unit,
     onRefresh: (String) -> Unit,
     onToggleMode: () -> Unit,
-    onToggleUnits: () -> Unit
+    onToggleUnits: () -> Unit,
+    onSetLanguage: (String) -> Unit
 ) {
     // Fresh scroll position per place
     val listState = remember(page.key) { androidx.compose.foundation.lazy.LazyListState() }
@@ -152,22 +164,24 @@ private fun WeatherContent(
                 }
             )
         }
+        bundle.nowcast?.let { nc -> item(key = "nowcast") { NowcastCard(nc) } }
         item(key = "hourly") { HourlyCard(bundle.hourly) }
         item(key = "daily") { DailyCard(bundle.daily) }
         item(key = "details") { DetailsSection(bundle) }
+        item(key = "settings") { AppSettingsCard(onSetLanguage) }
         item(key = "footer") {
             Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Updated ${WeatherRepository.format(bundle.fetchedAtMillis / 1000, c.tzOffsetSeconds, "HH:mm")}",
+                        tr("Updated ", "হালনাগাদ ") + WeatherRepository.format(bundle.fetchedAtMillis / 1000, c.tzOffsetSeconds, "HH:mm"),
                         style = MaterialTheme.typography.labelSmall,
                         color = Velora.TextTertiary
                     )
                     Spacer(Modifier.width(8.dp))
-                    TextLink(if (page.isLoading) "Updating…" else "Refresh") { onRefresh(page.key) }
+                    TextLink(if (page.isLoading) tr("Updating…", "হালনাগাদ হচ্ছে…") else tr("Refresh", "রিফ্রেশ")) { onRefresh(page.key) }
                 }
                 Spacer(Modifier.height(6.dp))
-                Text("Weather & air: OpenWeather · UV: Open-Meteo", style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary)
+                Text(tr("Weather & air: OpenWeather · UV & rain: Open-Meteo", "আবহাওয়া ও বায়ু: OpenWeather · ইউভি ও বৃষ্টি: Open-Meteo"), style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary)
             }
         }
     }
@@ -224,14 +238,14 @@ private fun Header(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Change city", tint = Velora.TextSecondary)
+                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = tr("Change city", "শহর বদলান"), tint = Velora.TextSecondary)
                 }
                 val time = WeatherRepository.format(System.currentTimeMillis() / 1000, current.tzOffsetSeconds, "EEE, d MMM · HH:mm")
                 Text(
                     when {
-                        isLoading -> "Updating…"
-                        isCurrentLocation -> "My location · $time"
-                        placeCount > 1 -> "$time · $placeCount places"
+                        isLoading -> tr("Updating…", "হালনাগাদ হচ্ছে…")
+                        isCurrentLocation -> tr("My location · $time", "আমার অবস্থান · $time")
+                        placeCount > 1 -> tr("$time · $placeCount places", "$time · $placeCount টি স্থান")
                         else -> time
                     },
                     style = MaterialTheme.typography.labelSmall,
@@ -240,7 +254,7 @@ private fun Header(
                 )
             }
         }
-        Pill(if (mode == BackgroundMode.LIVE) "✦ Live" else "◐ Real") {
+        Pill(if (mode == BackgroundMode.LIVE) tr("✦ Live", "✦ লাইভ") else tr("◐ Real", "◐ রিয়েল")) {
             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             onToggleMode()
         }
@@ -283,7 +297,7 @@ fun CityPicker(
 ) {
     var text by rememberSaveable { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-        Text("Places", style = MaterialTheme.typography.headlineSmall, color = Velora.TextPrimary)
+        Text(tr("Places", "স্থানসমূহ"), style = MaterialTheme.typography.headlineSmall, color = Velora.TextPrimary)
         Spacer(Modifier.height(12.dp))
         SearchField(
             text = text,
@@ -330,11 +344,11 @@ fun CityPicker(
         ) {
             Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = Velora.Accent, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Use my current location", style = MaterialTheme.typography.labelLarge, color = Velora.TextPrimary)
+            Text(tr("Use my current location", "আমার বর্তমান অবস্থান ব্যবহার করুন"), style = MaterialTheme.typography.labelLarge, color = Velora.TextPrimary)
         }
 
         Spacer(Modifier.height(16.dp))
-        Text("SAVED", style = MaterialTheme.typography.labelMedium, color = Velora.TextTertiary)
+        Text(tr("SAVED", "সংরক্ষিত"), style = MaterialTheme.typography.labelMedium, color = Velora.TextTertiary)
         Spacer(Modifier.height(8.dp))
         state.pages.forEachIndexed { i, p ->
             val selected = i == state.currentPage
@@ -357,9 +371,9 @@ fun CityPicker(
                     Text(p.displayName, style = MaterialTheme.typography.titleMedium, color = Velora.TextPrimary, maxLines = 1)
                     Text(
                         when {
-                            c != null -> "${c.description} · H ${c.tempMax}° L ${c.tempMin}°"
+                            c != null -> "${c.description} · " + tr("H ${c.tempMax}° L ${c.tempMin}°", "সর্বোচ্চ ${c.tempMax}° সর্বনিম্ন ${c.tempMin}°")
                             p.error != null -> p.error
-                            else -> "Loading…"
+                            else -> tr("Loading…", "লোড হচ্ছে…")
                         },
                         style = MaterialTheme.typography.labelSmall, color = Velora.TextSecondary, maxLines = 1
                     )
@@ -367,7 +381,7 @@ fun CityPicker(
                 if (c != null) Text("${c.temp}°", style = MaterialTheme.typography.headlineSmall, color = Velora.TextPrimary)
                 if (state.pages.size > 1) {
                     IconButton(onClick = { onRemove(p.key) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Remove", tint = Velora.TextTertiary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Close, contentDescription = tr("Remove", "সরান"), tint = Velora.TextTertiary, modifier = Modifier.size(18.dp))
                     }
                 } else {
                     Spacer(Modifier.width(12.dp))
@@ -399,7 +413,7 @@ private fun SearchField(
         Icon(Icons.Rounded.Search, contentDescription = null, tint = Velora.TextSecondary, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f)) {
-            if (text.isEmpty()) Text("Search any city", style = MaterialTheme.typography.bodyLarge, color = Velora.TextTertiary)
+            if (text.isEmpty()) Text(tr("Search any city", "যেকোনো শহর খুঁজুন"), style = MaterialTheme.typography.bodyLarge, color = Velora.TextTertiary)
             BasicTextField(
                 value = text,
                 onValueChange = onTextChange,
@@ -419,7 +433,7 @@ private fun SearchField(
                 CircularProgressIndicator(Modifier.size(18.dp), color = Velora.TextPrimary, strokeWidth = 2.dp)
             }
             text.isNotEmpty() -> IconButton(onClick = onClear) {
-                Icon(Icons.Rounded.Close, contentDescription = "Clear", tint = Velora.TextPrimary)
+                Icon(Icons.Rounded.Close, contentDescription = tr("Clear", "মুছুন"), tint = Velora.TextPrimary)
             }
             else -> Spacer(Modifier.width(12.dp))
         }
@@ -440,12 +454,12 @@ private fun Hero(c: CurrentWeather, modifier: Modifier = Modifier) {
             Text("°", style = shadowed, color = Velora.TextPrimary)
         }
         Text(
-            "H ${c.tempMax}°   ·   L ${c.tempMin}°",
+            tr("H ${c.tempMax}°   ·   L ${c.tempMin}°", "সর্বোচ্চ ${c.tempMax}°   ·   সর্বনিম্ন ${c.tempMin}°"),
             style = MaterialTheme.typography.bodyLarge.copy(shadow = Velora.TextShadow, fontSize = 17.sp),
             color = Velora.TextPrimary
         )
         Spacer(Modifier.height(4.dp))
-        Text("Feels like ${c.feelsLike}°", style = MaterialTheme.typography.bodyMedium.copy(shadow = Velora.TextShadow), color = Velora.TextSecondary)
+        Text(tr("Feels like ${c.feelsLike}°", "অনুভূত ${c.feelsLike}°"), style = MaterialTheme.typography.bodyMedium.copy(shadow = Velora.TextShadow), color = Velora.TextSecondary)
     }
 }
 
@@ -459,10 +473,10 @@ private fun EmptyState(page: PageState, message: String, onRetry: () -> Unit, on
             Spacer(Modifier.height(4.dp))
             Text(message, style = MaterialTheme.typography.titleMedium, color = Velora.TextPrimary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(16.dp))
-            PrimaryButton("Try again", onRetry)
+            PrimaryButton(tr("Try again", "আবার চেষ্টা করুন"), onRetry)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Change city", style = MaterialTheme.typography.labelLarge, color = Velora.TextSecondary, textAlign = TextAlign.Center,
+                tr("Change city", "শহর বদলান"), style = MaterialTheme.typography.labelLarge, color = Velora.TextSecondary, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(onClick = onOpenCities).padding(vertical = 12.dp)
             )
         }
@@ -515,5 +529,55 @@ fun ErrorBanner(message: String?, onDismiss: () -> Unit, modifier: Modifier = Mo
             Spacer(Modifier.width(10.dp))
             Text(lastMessage, style = MaterialTheme.typography.bodyMedium, color = Velora.TextPrimary)
         }
+    }
+}
+
+
+/** Language and weather-alert settings, shown at the bottom of the Weather tab. */
+@Composable
+private fun AppSettingsCard(onSetLanguage: (String) -> Unit) {
+    val context = LocalContext.current
+    val flow = remember { VeloraSettings.flow(context) }
+    val settings by flow.collectAsStateWithLifecycle()
+    val s = settings ?: SettingsData()
+    fun update(t: (SettingsData) -> SettingsData) {
+        VeloraSettings.update(context, t)
+        WeatherAlertWorker.schedule(context)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        GlassCard(Modifier.fillMaxWidth(), title = tr("Settings", "সেটিংস")) {
+            Text(tr("Language", "ভাষা"), style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill("English", selected = !s.isBangla) { if (s.isBangla) onSetLanguage("en") }
+                Pill("বাংলা", selected = s.isBangla) { if (!s.isBangla) onSetLanguage("bn") }
+            }
+            Spacer(Modifier.height(10.dp))
+            SettingSwitch(
+                tr("Rain starting soon", "শীঘ্রই বৃষ্টি"),
+                tr("Alert about an hour before rain begins", "বৃষ্টি শুরুর প্রায় এক ঘণ্টা আগে জানাবে"),
+                s.rainAlerts
+            ) { on -> update { it.copy(rainAlerts = on) } }
+            SettingSwitch(
+                tr("Severe weather", "দুর্যোগপূর্ণ আবহাওয়া"),
+                tr("Heavy rain, thunderstorms and strong wind in the next 12 hours", "আগামী ১২ ঘণ্টায় ভারী বৃষ্টি, বজ্রঝড় ও দমকা হাওয়া"),
+                s.severeAlerts
+            ) { on -> update { it.copy(severeAlerts = on) } }
+        }
+        if (s.rainAlerts || s.severeAlerts || s.quakeAlerts) ReliabilityCard()
+    }
+}
+
+@Composable
+private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = Velora.TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Velora.TextSecondary)
+        }
+        Switch(
+            checked = checked, onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = Velora.Accent, checkedThumbColor = Color(0xFF1A1A1A))
+        )
     }
 }

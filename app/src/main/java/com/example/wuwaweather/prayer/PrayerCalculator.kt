@@ -1,5 +1,6 @@
 package com.example.wuwaweather.prayer
 
+import com.example.wuwaweather.i18n.tr
 import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.acos
@@ -12,22 +13,29 @@ import kotlin.math.sin
 import kotlin.math.tan
 
 /** Calculation methods (twilight angles for Fajr and Isha). */
-enum class PrayerMethod(val label: String, val fajrAngle: Double, val ishaAngle: Double?, val ishaMinutes: Int?) {
-    KARACHI("Karachi (Islamic Foundation BD)", 18.0, 18.0, null),
-    MWL("Muslim World League", 18.0, 17.0, null),
-    ISNA("ISNA (North America)", 15.0, 15.0, null),
-    EGYPT("Egyptian Authority", 19.5, 17.5, null),
-    UMM_AL_QURA("Umm al-Qura (Makkah)", 18.5, null, 90),
+enum class PrayerMethod(private val en: String, private val bn: String, val fajrAngle: Double, val ishaAngle: Double?, val ishaMinutes: Int?) {
+    KARACHI("Karachi (Islamic Foundation BD)", "করাচি (ইসলামিক ফাউন্ডেশন বাংলাদেশ)", 18.0, 18.0, null),
+    MWL("Muslim World League", "মুসলিম ওয়ার্ল্ড লীগ", 18.0, 17.0, null),
+    ISNA("ISNA (North America)", "ইসনা (উত্তর আমেরিকা)", 15.0, 15.0, null),
+    EGYPT("Egyptian Authority", "মিশরীয় কর্তৃপক্ষ", 19.5, 17.5, null),
+    UMM_AL_QURA("Umm al-Qura (Makkah)", "উম্মুল কুরা (মক্কা)", 18.5, null, 90);
+
+    val label: String get() = tr(en, bn)
 }
 
 /** Asr shadow factor: Shafi'i (and Maliki/Hanbali) = 1, Hanafi = 2. */
-enum class Madhab(val label: String, val asrFactor: Int) {
-    HANAFI("Hanafi", 2),
-    SHAFI("Shafi'i", 1),
+enum class Madhab(private val en: String, private val bn: String, val asrFactor: Int) {
+    HANAFI("Hanafi", "হানাফি", 2),
+    SHAFI("Shafi'i", "শাফেয়ি", 1);
+
+    val label: String get() = tr(en, bn)
 }
 
-enum class Prayer(val label: String) {
-    FAJR("Fajr"), SUNRISE("Sunrise"), DHUHR("Dhuhr"), ASR("Asr"), MAGHRIB("Maghrib"), ISHA("Isha")
+enum class Prayer(private val en: String, private val bn: String) {
+    FAJR("Fajr", "ফজর"), SUNRISE("Sunrise", "সূর্যোদয়"), DHUHR("Dhuhr", "যোহর"),
+    ASR("Asr", "আসর"), MAGHRIB("Maghrib", "মাগরিব"), ISHA("Isha", "এশা");
+
+    val label: String get() = tr(en, bn)
 }
 
 /** Prayer times for one day as epoch milliseconds (UTC instants). */

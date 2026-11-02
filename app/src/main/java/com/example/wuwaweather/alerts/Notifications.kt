@@ -21,6 +21,8 @@ object Notifications {
     const val CH_FASTING = "fasting"
     const val CH_REMINDERS = "reminders"
     const val CH_QUAKES = "quakes"
+    const val CH_WEATHER = "weather"
+    const val CH_ADHAN = "adhan"
 
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -37,6 +39,12 @@ object Notifications {
                 ch(CH_FASTING, "Suhur & Iftar", "Suhur and Iftar reminders"),
                 ch(CH_REMINDERS, "Calendar reminders", "Reminders for your notes and to-dos"),
                 ch(CH_QUAKES, "Earthquake alerts", "Strong earthquakes near you"),
+                ch(CH_WEATHER, "Rain & storm alerts", "Rain starting soon, heavy rain, thunderstorms, strong wind"),
+                // The Adhan itself is the sound, so this channel is silent
+                NotificationChannel(CH_ADHAN, "Adhan", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Shown while the Adhan plays"
+                    setSound(null, null)
+                },
             )
         )
     }

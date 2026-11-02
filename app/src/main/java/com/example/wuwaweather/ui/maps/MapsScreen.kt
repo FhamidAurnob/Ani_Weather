@@ -25,7 +25,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +50,11 @@ import com.example.wuwaweather.ui.TextLink
 import com.example.wuwaweather.ui.theme.Velora
 import java.util.Locale
 
-private enum class MapSource(val label: String) { WIND("Wind · earth"), STORMS("Storms · Windy") }
+private enum class MapSource(private val en: String, private val bn: String) {
+    WIND("Wind · earth", "বাতাস · earth"), STORMS("Storms · Windy", "ঝড় · Windy");
+
+    val label: String get() = tr(en, bn)
+}
 
 /**
  * Live maps: earth.nullschool.net global wind animation and Windy (radar, storms and the
@@ -80,7 +85,7 @@ fun MapsScreen(bottomPadding: Dp) {
         ) {
             MapSource.values().forEach { s -> Pill(s.label, selected = source == s) { source = s } }
             Spacer(Modifier.weight(1f))
-            TextLink("Open ↗") {
+            TextLink(tr("Open ↗", "খুলুন ↗")) {
                 val url = if (source == MapSource.WIND) windUrl else stormsUrl
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             }
@@ -107,7 +112,7 @@ fun MapsScreen(bottomPadding: Dp) {
             }
             if (home == null) {
                 Text(
-                    "Showing Dhaka. Open the Weather tab once to centre maps on your place.",
+                    tr("Showing Dhaka. Open the Weather tab once to centre maps on your place.", "ঢাকা দেখানো হচ্ছে। আপনার স্থানে মানচিত্র আনতে একবার আবহাওয়া ট্যাব খুলুন।"),
                     style = MaterialTheme.typography.labelSmall,
                     color = Velora.TextSecondary,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)

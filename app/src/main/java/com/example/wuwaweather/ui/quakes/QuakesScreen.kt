@@ -28,7 +28,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -92,7 +93,7 @@ class QuakesViewModel(app: Application) : AndroidViewModel(app) {
             val home = HomeStore.get(getApplication())
             runCatching { QuakeRepository.load(_state.value.feed, home?.lat, home?.lon) }
                 .onSuccess { list -> _state.update { it.copy(quakes = list, loading = false, updatedAt = System.currentTimeMillis()) } }
-                .onFailure { _state.update { it.copy(loading = false, error = "Couldn't load earthquakes. Check your connection.") } }
+                .onFailure { _state.update { it.copy(loading = false, error = tr("Couldn't load earthquakes. Check your connection.", "ভূমিকম্পের তথ্য লোড হয়নি। ইন্টারনেট সংযোগ দেখুন।")) } }
         }
     }
 
@@ -117,25 +118,27 @@ fun QuakesScreen(bottomPadding: Dp) {
     val list = if (state.nearFirst) state.quakes.sortedBy { it.distanceKm ?: Double.MAX_VALUE } else state.quakes
 
     FeatureScreen(
-        title = "Earthquakes",
-        subtitle = "Worldwide · USGS" + (state.updatedAt?.let { " · updated ${time(it)}" } ?: ""),
+        title = tr("Earthquakes", "ভূমিকম্প"),
+        subtitle = tr("Worldwide · USGS", "বিশ্বজুড়ে · USGS") + (state.updatedAt?.let { tr(" · updated ", " · হালনাগাদ ") + time(it) } ?: ""),
         bottomPadding = bottomPadding,
         trailing = {
             if (state.loading) CircularProgressIndicator(Modifier.size(20.dp), color = Velora.TextPrimary, strokeWidth = 2.dp)
-            else TextLink("Refresh") { vm.load() }
+            else TextLink(tr("Refresh", "রিফ্রেশ")) { vm.load() }
         }
     ) {
         // Alert settings
         item(key = "alerts") {
-            GlassCard(Modifier.fillMaxWidth(), title = "Nearby alerts") {
+            GlassCard(Modifier.fillMaxWidth(), title = tr("Nearby alerts", "কাছাকাছি ভূমিকম্পের সতর্কতা")) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "Notify me about M${String.format(Locale.US, "%.1f", s.quakeMinMagnitude)}+ within ${s.quakeRadiusKm} km",
+                            tr("Notify me about M${String.format(Locale.US, "%.1f", s.quakeMinMagnitude)}+ within ${s.quakeRadiusKm} km",
+                                "${s.quakeRadiusKm} কিমির মধ্যে M${String.format(Locale.US, "%.1f", s.quakeMinMagnitude)}+ হলে জানাবে"),
                             style = MaterialTheme.typography.bodyLarge, color = Velora.TextPrimary
                         )
                         Text(
-                            home?.let { "Around ${it.name} · checked every 15 min" } ?: "Open the Weather tab once to set your location",
+                            home?.let { tr("Around ${it.name} · checked every 15 min", "${it.name}-এর আশেপাশে · প্রতি ১৫ মিনিটে দেখা হয়") }
+                                ?: tr("Open the Weather tab once to set your location", "লোকেশন সেট করতে একবার আবহাওয়া ট্যাব খুলুন"),
                             style = MaterialTheme.typography.labelSmall, color = Velora.TextSecondary
                         )
                     }
@@ -153,7 +156,7 @@ fun QuakesScreen(bottomPadding: Dp) {
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(500, 1000, 2000).forEach { km ->
-                        Pill("$km km", selected = s.quakeRadiusKm == km) { vm.updateSettings { it.copy(quakeRadiusKm = km) } }
+                        Pill(tr("$km km", "$km কিমি"), selected = s.quakeRadiusKm == km) { vm.updateSettings { it.copy(quakeRadiusKm = km) } }
                     }
                 }
             }
@@ -163,7 +166,7 @@ fun QuakesScreen(bottomPadding: Dp) {
         item(key = "filters") {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 QuakeFeed.values().forEach { f -> Pill(f.label, selected = state.feed == f) { vm.setFeed(f) } }
-                Pill("Nearest first", selected = state.nearFirst) { vm.toggleNearFirst() }
+                Pill(tr("Nearest first", "নিকটতম আগে"), selected = state.nearFirst) { vm.toggleNearFirst() }
             }
         }
 
@@ -173,7 +176,7 @@ fun QuakesScreen(bottomPadding: Dp) {
             }
         } else if (!state.loading && list.isEmpty()) {
             item(key = "empty") {
-                GlassCard(Modifier.fillMaxWidth()) { Text("No earthquakes in this list right now.", color = Velora.TextSecondary) }
+                GlassCard(Modifier.fillMaxWidth()) { Text(tr("No earthquakes in this list right now.", "এই তালিকায় এখন কোনো ভূমিকম্প নেই।"), color = Velora.TextSecondary) }
             }
         }
 
@@ -212,9 +215,9 @@ private fun QuakeRow(q: Quake, onClick: () -> Unit) {
             Spacer(Modifier.height(2.dp))
             val parts = listOfNotNull(
                 timeAgo(q.time),
-                "depth ${q.depthKm.roundToInt()} km",
-                q.distanceKm?.let { "${it.roundToInt()} km away" },
-                if (q.tsunami) "tsunami alert" else null
+                tr("depth ${q.depthKm.roundToInt()} km", "গভীরতা ${q.depthKm.roundToInt()} কিমি"),
+                q.distanceKm?.let { tr("${it.roundToInt()} km away", "${it.roundToInt()} কিমি দূরে") },
+                if (q.tsunami) tr("tsunami alert", "সুনামি সতর্কতা") else null
             )
             Text(parts.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = Velora.TextSecondary)
         }
@@ -224,11 +227,11 @@ private fun QuakeRow(q: Quake, onClick: () -> Unit) {
 private fun timeAgo(t: Long): String {
     val mins = (System.currentTimeMillis() - t) / 60_000
     return when {
-        mins < 1 -> "just now"
-        mins < 60 -> "${mins}m ago"
-        mins < 48 * 60 -> "${mins / 60}h ago"
-        else -> "${mins / 1440}d ago"
+        mins < 1 -> tr("just now", "এইমাত্র")
+        mins < 60 -> tr("${mins}m ago", "${mins} মিনিট আগে")
+        mins < 48 * 60 -> tr("${mins / 60}h ago", "${mins / 60} ঘণ্টা আগে")
+        else -> tr("${mins / 1440}d ago", "${mins / 1440} দিন আগে")
     }
 }
 
-private fun time(t: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(t))
+private fun time(t: Long) = SimpleDateFormat("HH:mm", com.example.wuwaweather.i18n.I18n.locale).format(Date(t))

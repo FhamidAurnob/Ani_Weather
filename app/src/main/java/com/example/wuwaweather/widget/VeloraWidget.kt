@@ -29,11 +29,14 @@ import androidx.glance.unit.ColorProvider
 import com.example.wuwaweather.MainActivity
 import com.example.wuwaweather.R
 import com.example.wuwaweather.data.Condition
+import com.example.wuwaweather.i18n.localDigits
+import com.example.wuwaweather.i18n.tr
 
 /** Velora home-screen widget: city, temperature, condition and high/low. */
 class VeloraWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        com.example.wuwaweather.data.VeloraSettings.get(context)   // applies the app language
         val snapshot = WidgetSnapshot.loadFresh(context)
         provideContent { WidgetContent(snapshot) }
     }
@@ -69,16 +72,16 @@ private fun WidgetContent(s: WidgetSnapshot?) {
         if (s == null) {
             Text("Velora", style = TextStyle(color = White, fontSize = 16.sp, fontWeight = FontWeight.Medium))
             Spacer(GlanceModifier.defaultWeight())
-            Text("Open the app to load weather", style = TextStyle(color = WhiteSoft, fontSize = 13.sp))
+            Text(tr("Open the app to load weather", "আবহাওয়া দেখতে অ্যাপটি খুলুন"), style = TextStyle(color = WhiteSoft, fontSize = 13.sp))
             return@Column
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(s.city, style = TextStyle(color = White, fontSize = 15.sp, fontWeight = FontWeight.Medium), maxLines = 1)
         }
         Spacer(GlanceModifier.defaultWeight())
-        Text("${s.temp}°", style = TextStyle(color = White, fontSize = 44.sp, fontWeight = FontWeight.Normal))
+        Text("${s.temp}°".localDigits(), style = TextStyle(color = White, fontSize = 44.sp, fontWeight = FontWeight.Normal))
         Text(s.description, style = TextStyle(color = WhiteSoft, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
         Spacer(GlanceModifier.height(2.dp))
-        Text("H ${s.high}°  ·  L ${s.low}°", style = TextStyle(color = WhiteFaint, fontSize = 12.sp))
+        Text(tr("H ${s.high}°  ·  L ${s.low}°", "সর্বোচ্চ ${s.high}°  ·  সর্বনিম্ন ${s.low}°").localDigits(), style = TextStyle(color = WhiteFaint, fontSize = 12.sp))
     }
 }

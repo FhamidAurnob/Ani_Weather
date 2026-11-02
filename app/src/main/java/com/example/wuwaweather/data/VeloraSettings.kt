@@ -1,6 +1,7 @@
 package com.example.wuwaweather.data
 
 import android.content.Context
+import com.example.wuwaweather.i18n.I18n
 import com.example.wuwaweather.prayer.Madhab
 import com.example.wuwaweather.prayer.Prayer
 import com.example.wuwaweather.prayer.PrayerMethod
@@ -21,8 +22,18 @@ data class SettingsData(
     val hijriOffset: Int = -1,
     val quakeAlerts: Boolean = true,
     val quakeRadiusKm: Int = 1000,
-    val quakeMinMagnitude: Double = 5.5
-)
+    val quakeMinMagnitude: Double = 5.5,
+    /** "en" or "bn". */
+    val language: String = "en",
+    /** Play Adhan audio at prayer alerts (needs a chosen sound file). */
+    val adhanEnabled: Boolean = false,
+    val adhanUri: String? = null,
+    val fajrAdhanUri: String? = null,
+    val rainAlerts: Boolean = true,
+    val severeAlerts: Boolean = true
+) {
+    val isBangla: Boolean get() = language == "bn"
+}
 
 object VeloraSettings {
     private const val PREFS = "velora_settings"
@@ -46,8 +57,15 @@ object VeloraSettings {
             hijriOffset = p.getInt("hijri_offset", d.hijriOffset),
             quakeAlerts = p.getBoolean("quake_alerts", d.quakeAlerts),
             quakeRadiusKm = p.getInt("quake_radius", d.quakeRadiusKm),
-            quakeMinMagnitude = p.getFloat("quake_min_mag", d.quakeMinMagnitude.toFloat()).toDouble()
+            quakeMinMagnitude = p.getFloat("quake_min_mag", d.quakeMinMagnitude.toFloat()).toDouble(),
+            language = p.getString("language", d.language) ?: d.language,
+            adhanEnabled = p.getBoolean("adhan_enabled", d.adhanEnabled),
+            adhanUri = p.getString("adhan_uri", null),
+            fajrAdhanUri = p.getString("fajr_adhan_uri", null),
+            rainAlerts = p.getBoolean("rain_alerts", d.rainAlerts),
+            severeAlerts = p.getBoolean("severe_alerts", d.severeAlerts)
         )
+        I18n.bangla = loaded.isBangla
         _state.value = loaded
         return loaded
     }
@@ -66,7 +84,14 @@ object VeloraSettings {
             .putBoolean("quake_alerts", next.quakeAlerts)
             .putInt("quake_radius", next.quakeRadiusKm)
             .putFloat("quake_min_mag", next.quakeMinMagnitude.toFloat())
+            .putString("language", next.language)
+            .putBoolean("adhan_enabled", next.adhanEnabled)
+            .putString("adhan_uri", next.adhanUri)
+            .putString("fajr_adhan_uri", next.fajrAdhanUri)
+            .putBoolean("rain_alerts", next.rainAlerts)
+            .putBoolean("severe_alerts", next.severeAlerts)
             .apply()
+        I18n.bangla = next.isBangla
         _state.value = next
         return next
     }

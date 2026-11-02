@@ -29,6 +29,9 @@ import com.example.wuwaweather.ui.WeatherActions
 import com.example.wuwaweather.alerts.AlarmScheduler
 import com.example.wuwaweather.alerts.Notifications
 import com.example.wuwaweather.quakes.QuakeWorker
+import com.example.wuwaweather.alerts.WeatherAlertWorker
+import com.example.wuwaweather.data.VeloraSettings
+import androidx.compose.runtime.key
 import com.example.wuwaweather.ui.theme.VeloraTheme
 
 class MainActivity : ComponentActivity() {
@@ -41,10 +44,14 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
 
-        // Alerts: notification channels, upcoming alarms, background earthquake checks
+        // Load settings first so the chosen language applies from the first frame
+        val settingsFlow = VeloraSettings.flow(this)
+
+        // Alerts: notification channels, upcoming alarms, background earthquake and weather checks
         Notifications.ensureChannels(this)
         runCatching { AlarmScheduler.rescheduleAll(this) }
         QuakeWorker.schedule(this)
+        WeatherAlertWorker.schedule(this)
 
         setContent {
             VeloraTheme {
@@ -64,6 +71,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val settings by settingsFlow.collectAsStateWithLifecycle()
+                // Rebuild the whole UI when the language changes
+                key(settings?.language) {
                 Box(Modifier.fillMaxSize()) {
                     VeloraApp(
                         state = state,
@@ -84,7 +94,8 @@ class MainActivity : ComponentActivity() {
                             },
                             onSelectPlace = vm::selectPage,
                             onRemovePlace = vm::removePage,
-                            onDismissMessage = vm::dismissMessage
+                            onDismissMessage = vm::dismissMessage,
+                            onSetLanguage = vm::setLanguage
                         )
                     )
                     AnimatedVisibility(
@@ -94,6 +105,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         SplashOverlay()
                     }
+                }
                 }
             }
         }

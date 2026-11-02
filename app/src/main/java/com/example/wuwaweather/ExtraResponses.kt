@@ -17,13 +17,31 @@ data class AirComponents(
     val pm10: Double?
 )
 
-/** Open-Meteo UV index. */
+/** Open-Meteo extras: UV, 15-minute precipitation and hourly storm signals (unix times). */
 data class OpenMeteoUvResponse(
     val current: UvCurrent?,
-    val daily: UvDaily?
+    val daily: UvDaily?,
+    @SerializedName("minutely_15") val minutely15: Minutely15?,
+    val hourly: HourlyExtras?
 )
 
-data class UvCurrent(@SerializedName("uv_index") val uvIndex: Double?)
+data class UvCurrent(
+    @SerializedName("uv_index") val uvIndex: Double?,
+    val precipitation: Double?
+)
+
+data class Minutely15(
+    val time: List<Long>?,
+    val precipitation: List<Double?>?
+)
+
+data class HourlyExtras(
+    val time: List<Long>?,
+    val precipitation: List<Double?>?,
+    @SerializedName("precipitation_probability") val precipitationProbability: List<Int?>?,
+    @SerializedName("weather_code") val weatherCode: List<Int?>?,
+    @SerializedName("wind_gusts_10m") val windGusts: List<Double?>?
+)
 
 data class UvDaily(@SerializedName("uv_index_max") val uvIndexMax: List<Double?>?)
 

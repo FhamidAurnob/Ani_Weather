@@ -13,7 +13,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.wuwaweather.i18n.Text
+import com.example.wuwaweather.i18n.tr
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +33,7 @@ import com.example.wuwaweather.ui.theme.Velora
 @Composable
 fun HourlyCard(items: List<HourlyItem>, modifier: Modifier = Modifier) {
     GlassCard(modifier, contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 18.dp)) {
-        SectionLabel("Next 24 hours", Modifier.padding(horizontal = 18.dp))
+        SectionLabel(tr("Next 24 hours", "আগামী ২৪ ঘণ্টা"), Modifier.padding(horizontal = 18.dp))
         Spacer(Modifier.height(12.dp))
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -68,7 +69,7 @@ fun DailyCard(items: List<DailyItem>, modifier: Modifier = Modifier) {
     if (items.isEmpty()) return
     val lowest = items.minOf { it.min }
     val highest = items.maxOf { it.max }
-    GlassCard(modifier, title = "5-day forecast") {
+    GlassCard(modifier, title = tr("5-day forecast", "৫ দিনের পূর্বাভাস")) {
         items.forEachIndexed { i, day ->
             if (i > 0) HorizontalDivider(color = Velora.Divider, thickness = 0.5.dp)
             Row(
@@ -128,5 +129,39 @@ private fun TempRangeBar(min: Int, max: Int, lowest: Int, highest: Int, modifier
             size = Size(end - start, h),
             cornerRadius = CornerRadius(h / 2)
         )
+    }
+}
+
+/** "Next 2 hours" rain nowcast: summary line plus 15-minute bars. */
+@Composable
+fun NowcastCard(nowcast: com.example.wuwaweather.data.Nowcast, modifier: Modifier = Modifier) {
+    val maxMm = maxOf(0.6, nowcast.slots.maxOf { it.precipMm })
+    val dry = nowcast.slots.all { it.precipMm < 0.1 }
+    GlassCard(modifier.fillMaxWidth(), title = com.example.wuwaweather.i18n.tr("Next 2 hours", "আগামী ২ ঘণ্টা")) {
+        Text(nowcast.summary, style = MaterialTheme.typography.bodyLarge, color = Velora.TextPrimary)
+        if (!dry) {
+            Spacer(Modifier.height(12.dp))
+            Canvas(Modifier.fillMaxWidth().height(44.dp)) {
+                val n = nowcast.slots.size
+                val gap = 6.dp.toPx()
+                val w = (size.width - gap * (n - 1)) / n
+                nowcast.slots.forEachIndexed { i, s ->
+                    val frac = (s.precipMm / maxMm).toFloat().coerceIn(0f, 1f)
+                    val h = maxOf(3.dp.toPx(), size.height * frac)
+                    drawRoundRect(
+                        color = if (s.precipMm >= 0.1) Velora.Rain else Color(0x26FFFFFF),
+                        topLeft = Offset(i * (w + gap), size.height - h),
+                        size = Size(w, h),
+                        cornerRadius = CornerRadius(4.dp.toPx())
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf(
+                    com.example.wuwaweather.i18n.tr("Now", "এখন"), "30m", "1h", "1.5h", "2h"
+                ).forEach { Text(it, style = MaterialTheme.typography.labelSmall, color = Velora.TextTertiary) }
+            }
+        }
     }
 }

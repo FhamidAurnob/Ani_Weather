@@ -90,6 +90,7 @@ data class WeatherBundle(
     val daily: List<DailyItem>,
     val air: AirQuality?,
     val uv: UvInfo?,
+    val nowcast: Nowcast? = null,
     val units: UnitSystem,
     val fetchedAtMillis: Long
 )

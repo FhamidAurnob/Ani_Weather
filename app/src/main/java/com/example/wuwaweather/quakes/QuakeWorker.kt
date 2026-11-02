@@ -11,6 +11,8 @@ import androidx.work.WorkerParameters
 import com.example.wuwaweather.alerts.Notifications
 import com.example.wuwaweather.data.HomeStore
 import com.example.wuwaweather.data.VeloraSettings
+import com.example.wuwaweather.i18n.localDigits
+import com.example.wuwaweather.i18n.tr
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
@@ -39,8 +41,10 @@ class QuakeWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         }.forEach { q ->
             Notifications.show(
                 ctx, Notifications.CH_QUAKES, q.id.hashCode(),
-                "M${String.format(Locale.US, "%.1f", q.magnitude)} earthquake ${q.distanceKm!!.roundToInt()} km away",
-                "${q.place}. Depth ${q.depthKm.roundToInt()} km." + if (q.tsunami) " Tsunami alert issued." else ""
+                tr("M${String.format(Locale.US, "%.1f", q.magnitude)} earthquake ${q.distanceKm!!.roundToInt()} km away",
+                    "M${String.format(Locale.US, "%.1f", q.magnitude)} ভূমিকম্প, ${q.distanceKm.roundToInt()} কিমি দূরে").localDigits(),
+                (tr("${q.place}. Depth ${q.depthKm.roundToInt()} km.", "${q.place}। গভীরতা ${q.depthKm.roundToInt()} কিমি।") +
+                    if (q.tsunami) tr(" Tsunami alert issued.", " সুনামি সতর্কতা জারি।") else "").localDigits()
             )
             seen += q.id
         }
